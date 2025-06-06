@@ -116,7 +116,7 @@ async def index():
             wins_label = ui.label(f"Wins: {wins.value}")
             wins_label.bind_text_from(wins, "value", lambda v: f"Wins: {v}")
             
-            finished = ui.slider(min=0, max=10, step=1, value=0).classes('w-full')
+            finished = ui.slider(min=0, max=20, step=1, value=0).classes('w-full')
             finished_label = ui.label(f"Day Finished: {finished.value}")
             finished_label.bind_text_from(finished, "value", lambda v: f"Day Finished: {v}")
 
