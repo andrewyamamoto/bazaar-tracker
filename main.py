@@ -58,7 +58,17 @@ async def list_of_games() -> None:
             else:
                 ui.label(str(game.finished)).classes('w-1/12 truncate')
             ui.label(game.media).classes('w-1/12 truncate')
-            ui.label(game.notes).classes('w-1/12 truncate')
+            # Show notes with modal if truncated, link the text instead of adding a view button
+            max_length = 20
+            if game.notes and len(game.notes) > max_length:
+                def show_notes(notes=game.notes):
+                    with ui.dialog() as dialog, ui.card():
+                        ui.label(notes).classes('whitespace-pre-line')
+                        ui.button('Close', on_click=dialog.close)
+                    dialog.open()
+                ui.label(game.notes[:max_length] + '...').classes('truncate inline text-primary cursor-pointer underline').on('click', show_notes)
+            else:
+                ui.label(game.notes).classes('w-1/12 truncate')
 
             if game.played:
                 played_str = game.played.strftime('%Y-%m-%d %I:%M %p')
