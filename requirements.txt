@@ -8,6 +8,7 @@ anyio==4.9.0
 asyncpg==0.30.0
 attrs==25.3.0
 bidict==0.23.1
+boto3==1.38.33
 certifi==2025.4.26
 charset-normalizer==3.4.2
 click==8.1.8
@@ -31,9 +32,6 @@ niceguicrud==0.1.9
 orjson==3.10.18
 propcache==0.3.1
 pscript==0.7.7
-psycopg-binary==3.2.9
-psycopg-pool==3.2.6
-psycopg2-binary==2.9.10
 psycopg==3.2.9
 pydantic==2.11.5
 pydantic_core==2.33.2

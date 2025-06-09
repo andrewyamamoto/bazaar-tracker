@@ -26,8 +26,7 @@ BUCKET_UPLOAD_URL = os.getenv('BUCKET_UPLOAD_URL')
 BUCKET_KEY = os.getenv('BUCKET_KEY')
 BUCKET_SECRET = os.getenv('BUCKET_SECRET')
 
-def set_page_title():
-    pass
+
 async def init_db():
     db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@db-postgresql-sfo2-10284-do-user-282100-0.m.db.ondigitalocean.com:25060/bazaar"
     await Tortoise.init(
@@ -80,8 +79,7 @@ async def authenticate(username, password):
 
 @ui.page('/')
 def login_page():
-    set_page_title()
-    ui.page_title('Bazaar Run Tracker')
+    ui.page_title("Bazaar Tracker")
     ui.label('Login').classes('text-3xl font-bold mb-4')
     email = ui.input('Username').props('type=text').classes('w-full max-w-sm')
     password = ui.input('Password').props('type=password').classes('w-full max-w-sm')
@@ -301,8 +299,7 @@ async def list_of_games(page_number=1, page_size=8) -> None:
 @ui.page('/dashboard/{season_id}')
 async def index(season_id: str = None):
     
-    set_page_title()
-    ui.page_title('Bazaar Run Tracker')
+    ui.page_title("Bazaar Tracker")
     season_source = season_id or context.query.get('season', '0')
     
     try:
@@ -496,7 +493,7 @@ async def index(season_id: str = None):
             upload_component = ui.upload(label='Upload Screenshot or Video', on_upload=handle_upload).classes('w-full')
             MAX_NOTES_LENGTH = 75
             notes = ui.textarea(label=f'Notes (max {MAX_NOTES_LENGTH} chars)').classes('w-full rounded-lg border border-gray-800 p-2 pt-0')
-            char_count_label = ui.label('0/200').classes('text-xs text-gray-500 mb-2')
+            char_count_label = ui.label('0/75').classes('text-xs text-gray-500 mb-2')
 
             def update_char_count():
                 value = notes.value or ''

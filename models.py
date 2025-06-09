@@ -1,6 +1,7 @@
-from tortoise import fields, models
+from tortoise import fields
+from tortoise.models import Model
 
-class Game(models.Model):
+class Game(Model):
     id = fields.IntField(pk=True)
     # player = fields.CharField(max_length=255)
     player = fields.ForeignKeyField('models.Users', related_name='games')
@@ -14,7 +15,7 @@ class Game(models.Model):
     played = fields.DatetimeField(max_length=2000, generated=True)
     upload = fields.CharField(max_length=2000)
 
-class Users(models.Model):
+class Users(Model):
     id = fields.IntField(pk=True)
     username = fields.CharField(max_length=150, unique=True)
     password = fields.CharField(max_length=255)
