@@ -1,0 +1,23 @@
+name: bazaar-tracker
+region: nyc
+services:
+  - name: web
+    environment_slug: python
+    source_dir: .
+    run_command: "python main.py"
+    http_port: 8080
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    routes:
+      - path: /
+    envs:
+      - key: DB_USER
+        value: "<YOUR_DB_USER>"
+      - key: DB_PASSWORD
+        value: "<YOUR_DB_PASSWORD>"
+      - key: BUCKET_UPLOAD_URL
+        value: "<YOUR_BUCKET_UPLOAD_URL>"
+      - key: BUCKET_KEY
+        value: "<YOUR_BUCKET_KEY>"
+      - key: BUCKET_SECRET
+        value: "<YOUR_BUCKET_SECRET>"
