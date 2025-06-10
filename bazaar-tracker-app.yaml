@@ -19,17 +19,18 @@ ingress:
 name: bazaar-tracker-app
 region: sfo
 services:
-- environment_slug: python
+- name: bazaar-tracker
+  environment_slug: python
   github:
     branch: andrew-updates
     deploy_on_push: true
     repo: andrewyamamoto/bazaar-tracker
+  source_dir: /
   http_port: 8080
   instance_count: 1
   instance_size_slug: apps-s-1vcpu-0.5gb
-  name: bazaar-tracker
-  source_dir: /
   build_command: pip install -r requirements.txt
+  
   processes:
       - type: web
         name: web
