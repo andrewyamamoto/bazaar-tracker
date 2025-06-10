@@ -3,6 +3,7 @@ import bcrypt
 import boto3
 import hashlib
 import httpx
+import json
 import models
 import os
 import re
@@ -11,8 +12,8 @@ import uvicorn
 
 from dotenv import load_dotenv
 from nicegui import app, ui, context
-from starlette.middleware.sessions import SessionMiddleware
 from fastapi import Request
+from starlette.middleware.sessions import SessionMiddleware
 from tortoise import Tortoise
 from tortoise.expressions import Q
 from types import SimpleNamespace
@@ -95,6 +96,19 @@ async def authenticate(username, password):
         return user
     return None
 
+@app.post('/api/login')
+async def api_login(request: Request):
+    data = await request.json()
+    username = data.get('username')
+    password = data.get('password')
+    user = await authenticate(username, password)
+    if user:
+        request.session['user_id'] = user.id
+        latest_game = await models.Game.filter(player=user.id).order_by('-season').first()
+        latest_season = latest_game.season if latest_game else 3
+        return {'success': True, 'redirect': f'/dashboard/{latest_season}'}
+    return {'success': False, 'error': 'Invalid email or password.'}
+
 @ui.page('/')
 def login_page(request: Request):
     context.session = request.session
@@ -108,13 +122,14 @@ def login_page(request: Request):
         if not email.value or not password.value:
             message.text = 'Username and password cannot be blank.'
             return
-        user = await authenticate(email.value, password.value)
-        if user:
+        payload = {"username": email.value, "password": password.value}
+        result = await ui.run_javascript(
+            f"fetch('/api/login', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({json.dumps(payload)})}}).then(r => r.json())",
+            respond=True,
+        )
+        if result.get('success'):
             message.text = ''
-            context.session['user_id'] = user.id
-            latest_game = await models.Game.filter(player=user.id).order_by('-season').first()
-            latest_season = latest_game.season if latest_game else 3
-            ui.navigate.to(f'/dashboard/{latest_season}')
+            ui.navigate.to(result.get('redirect', '/dashboard/0'))
         else:
             message.text = 'Invalid email or password.'
 
