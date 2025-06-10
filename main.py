@@ -124,8 +124,7 @@ def login_page(request: Request):
             return
         payload = {"username": email.value, "password": password.value}
         result = await ui.run_javascript(
-            f"fetch('/api/login', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({json.dumps(payload)})}}).then(r => r.json())",
-            respond=True,
+            f"return fetch('/api/login', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({json.dumps(payload)})}}).then(r => r.json())"
         )
         if result.get('success'):
             message.text = ''
