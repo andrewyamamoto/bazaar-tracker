@@ -152,12 +152,13 @@ async def logout_page(request: Request):
     ui.navigate.to('/')
 
 @ui.refreshable
-async def list_of_games(page_number=1, page_size=8, session=None) -> None:
+async def list_of_games(page_number=1, page_size=8, session=None, season=None) -> None:
     context.session = session or getattr(context, 'session', None)
+    context.season = season if season is not None else getattr(context, 'season', 0)
     async def delete_game(game_id: int) -> None:
         game = await models.Game.get(id=game_id)
         await game.delete()
-        list_of_games.refresh(page_number=page_number, session=context.session)
+        list_of_games.refresh(page_number=page_number, session=context.session, season=context.season)
 
     user = await get_current_user()
     if not user:
@@ -165,7 +166,7 @@ async def list_of_games(page_number=1, page_size=8, session=None) -> None:
         ui.navigate.to('/')
         return
 
-    season = getattr(context, 'season', 0)
+    season = context.season
 
     total_games = await models.Game.filter(player=user.id, season=season).count()
     games = await models.Game.filter(player=user.id, season=season)\
@@ -229,10 +230,10 @@ async def list_of_games(page_number=1, page_size=8, session=None) -> None:
         # Pagination controls
         with ui.row().classes('justify-center mt-4'):
             if page_number > 1:
-                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=context.session))
+                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=context.session, season=context.season))
             ui.label(f'Page {page_number} of {total_pages}').classes('mt-2')
             if page_number < total_pages:
-                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=context.session))
+                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=context.session, season=context.season))
     
     # Placement tally chart for each hero
 
@@ -434,7 +435,7 @@ async def index(request: Request, season_id: str = None):
         notes.value = ''
         state.uploaded_url = ''
         upload_component.reset()
-        list_of_games.refresh(session=context.session)
+        list_of_games.refresh(session=context.session, season=season.value)
         ui.notify('Run added!')
     
     with ui.column().classes('w-full'):
@@ -549,7 +550,7 @@ async def index(request: Request, season_id: str = None):
             ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
 
         with ui.column().classes('flex-1'):
-            await list_of_games(session=request.session)
+            await list_of_games(session=request.session, season=season.value)
  
         
 
