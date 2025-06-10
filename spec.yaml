@@ -1,13 +1,14 @@
 name: bazaar-tracker
-region: sfo
 services:
   - name: web
+    github:
+      repo: andrewyamamoto/bazaar-tracker
+      branch: main
+    run_command: gunicorn main:app --bind 0.0.0.0:8080
     environment_slug: python
-    source_dir: .
-    run_command: "python main.py"
-    http_port: 8080
+    envs:
+      - key: PORT
+        value: "8080"
+    build_command: pip install -r requirements.txt
     instance_size_slug: basic-xxs
     instance_count: 1
-    routes:
-      - path: /
-
