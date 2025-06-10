@@ -81,8 +81,8 @@ async def create_user(username, password):
     await models.Users.create(username=username, password=hashed)
     return True, "User created successfully."
 
-async def get_current_user():
-    session = getattr(context, 'session', None)
+async def get_current_user(session=None):
+    session = session or getattr(context, 'session', None)
     if not session:
         return None
     user_id = session.get('user_id')
@@ -154,25 +154,25 @@ async def logout_page(request: Request):
 
 @ui.refreshable
 async def list_of_games(page_number=1, page_size=8, session=None, season=None) -> None:
-    context.session = session or getattr(context, 'session', None)
-    context.season = season if season is not None else getattr(context, 'season', 0)
+    current_session = session or getattr(context, 'session', None)
+    current_season = season if season is not None else getattr(context, 'season', 0)
     async def delete_game(game_id: int) -> None:
         # ensure that the game belongs to the current user before deleting
-        user = await get_current_user()
+        user = await get_current_user(current_session)
         game = await models.Game.get_or_none(id=game_id, player=user.id)
         if not game:
             ui.notify('Unauthorized', color='negative')
             return
         await game.delete()
-        list_of_games.refresh(page_number=page_number, session=context.session, season=context.season)
+        list_of_games.refresh(page_number=page_number, session=current_session, season=current_season)
 
-    user = await get_current_user()
+    user = await get_current_user(current_session)
     if not user:
         ui.label('Not logged in').classes('text-red-500')
         ui.navigate.to('/')
         return
 
-    season = context.season
+    season = current_season
 
     total_games = await models.Game.filter(player=user.id, season=season).count()
     games = await models.Game.filter(player=user.id, season=season)\
@@ -236,10 +236,10 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
         # Pagination controls
         with ui.row().classes('justify-center mt-4'):
             if page_number > 1:
-                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=context.session, season=context.season))
+                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=current_session, season=current_season))
             ui.label(f'Page {page_number} of {total_pages}').classes('mt-2')
             if page_number < total_pages:
-                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=context.session, season=context.season))
+                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=current_session, season=current_season))
     
     # Placement tally chart for each hero
 
@@ -374,7 +374,7 @@ async def index(request: Request, season_id: str = None):
     season = SeasonValue(default_season)
     context.season = season.value
 
-    user = await get_current_user()
+    user = await get_current_user(request.session)
     if DEV_MODE and not user:
         user, _ = await models.Users.get_or_create(id=1, defaults={'username': 'devuser', 'password': 'placeholder'})
         context.session['user_id'] = user.id
