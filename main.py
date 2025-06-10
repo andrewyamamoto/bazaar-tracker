@@ -551,6 +551,8 @@ async def index(request: Request, season_id: str = None):
 
         with ui.column().classes('flex-1'):
             await list_of_games(session=request.session, season=season.value)
+
+
  
         
 
