@@ -15,8 +15,6 @@ ingress:
     - component:
         name: bazaar-tracker
       match:
-        authority:
-          exact: ""
         path:
           prefix: /
 
