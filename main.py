@@ -9,15 +9,12 @@ import re
 import time
 import uvicorn
 
-from datetime import datetime
 from dotenv import load_dotenv
-from nicegui import app, ui, context, page
+from nicegui import app, ui, context
 from starlette.middleware.sessions import SessionMiddleware
 from tortoise import Tortoise
 from tortoise.expressions import Q
 from types import SimpleNamespace
-from typing import List
-from collections import defaultdict
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
