@@ -38,4 +38,4 @@ services:
     processes:
       - type: web
         name: web
-        command: python main.py
+        run_command: python main.py
