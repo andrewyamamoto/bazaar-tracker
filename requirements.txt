@@ -9,6 +9,7 @@ asyncpg==0.30.0
 attrs==25.3.0
 bidict==0.23.1
 boto3==1.38.33
+bcrypt
 certifi==2025.4.26
 charset-normalizer==3.4.2
 click==8.1.8
