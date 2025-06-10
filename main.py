@@ -120,7 +120,7 @@ async def list_of_games(page_number=1, page_size=8) -> None:
     async def delete_game(game_id: int) -> None:
         game = await models.Game.get(id=game_id)
         await game.delete()
-        await list_of_games.refresh(page_number=page_number)
+        list_of_games.refresh(page_number=page_number)
 
     user = getattr(context, 'user', None)
     if not user:
@@ -175,8 +175,14 @@ async def list_of_games(page_number=1, page_size=8) -> None:
                 ui.label("Ranked" if game.ranked else "Non-Ranked").classes('truncate text-center')
                 ui.label("Perfect Game" if game.wins == 10 and game.finished == 10 else f"{game.wins}/{game.finished}").classes(
                     f'truncate {placement_color} text-center')
-                ui.link('View', target=game.media).classes('text-blue-600 underline text-center') if game.media else ui.label('-').classes('truncate text-center text-gray-500')
-                ui.link('View', target=game.upload).classes('text-blue-600 underline text-center') if game.upload else ui.label('No Upload').classes('truncate text-gray-500 text-center')
+                ui.link('View', target=game.media, new_tab=True).classes('text-blue-600 underline text-center') if game.media else ui.label('-').classes('truncate text-center text-gray-500')
+
+                with ui.dialog().props('maximized') as dialog, ui.card().classes('w-full h-full'):
+                    ui.image(game.upload).props('fit=none').classes('mb-4')
+                    ui.button('Close', on_click=dialog.close).classes('mt-2')
+
+                ui.link('View').on('click', lambda d=dialog: d.open()).classes('text-blue-600 underline text-center') if game.upload else ui.label('No Upload').classes('truncate text-gray-500 text-center')
+
                 ui.label(game.notes or '').classes('truncate text-center')
                 played_str = game.played.strftime('%Y-%m-%d %I:%M %p') if game.played else ''
                 ui.label(played_str).classes('truncate text-center')
