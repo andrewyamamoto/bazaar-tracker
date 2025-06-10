@@ -22,7 +22,7 @@ services:
 - name: bazaar-tracker
   environment_slug: python
   github:
-    branch: andrew-updates
+    branch: main
     deploy_on_push: true
     repo: andrewyamamoto/bazaar-tracker
   source_dir: /
