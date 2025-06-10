@@ -37,6 +37,7 @@ DEV_MODE = os.getenv('DEV_MODE', 'false').lower() == 'true'
 async def init_db():
     # db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@db-postgresql-sfo2-10284-do-user-282100-0.m.db.ondigitalocean.com:25060/bazaar"
     db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
+    print("DB_URL:", db_url)
     await Tortoise.init(
         db_url=db_url,
         modules={"models": ["models"]}
