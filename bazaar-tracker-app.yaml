@@ -1,12 +1,15 @@
 alerts:
   - rule: DEPLOYMENT_FAILED
   - rule: DOMAIN_FAILED
+
 envs:
   - key: DEV_MODE
     scope: RUN_AND_BUILD_TIME
     value: "false"
+
 features:
   - buildpack-stack=ubuntu-22
+
 ingress:
   rules:
     - component:
@@ -16,8 +19,10 @@ ingress:
           exact: ""
         path:
           prefix: /
-  name: bazaar-tracker-app
-  region: sfo
+
+name: bazaar-tracker-app
+region: sfo
+
 services:
   - name: bazaar-tracker
     environment_slug: python
@@ -30,7 +35,7 @@ services:
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-0.5gb
     build_command: pip install -r requirements.txt
-  
+
     processes:
       - type: web
         name: web
