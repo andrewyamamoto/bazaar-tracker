@@ -33,7 +33,7 @@ BUCKET_UPLOAD_URL = os.getenv('BUCKET_UPLOAD_URL')
 BUCKET_KEY = os.getenv('BUCKET_KEY')
 BUCKET_SECRET = os.getenv('BUCKET_SECRET')
 DEV_MODE = os.getenv('DEV_MODE', 'false').lower() == 'true'
-SESSION_SECRET = os.getenv('SESSION_SECRET', 'change-me')
+SESSION_SECRET = os.getenv('SESSION_SECRET')
 
 
 async def init_db():
