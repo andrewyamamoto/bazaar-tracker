@@ -20,18 +20,23 @@ from collections import defaultdict
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-    
+
 load_dotenv()
-DEV_MODE = os.getenv('DEV_MODE', 'false').lower() == 'true'
+
+DATABASE_HOST = os.getenv("DB_HOST")
+DATABASE_PORT = os.getenv("DB_PORT", "5432")
+DATABASE_NAME = os.getenv("DB_NAME")
 DATABASE_USER = os.getenv('DB_USER')
 DATABASE_PASSWORD = os.getenv('DB_PASSWORD')
 BUCKET_UPLOAD_URL = os.getenv('BUCKET_UPLOAD_URL')
 BUCKET_KEY = os.getenv('BUCKET_KEY')
 BUCKET_SECRET = os.getenv('BUCKET_SECRET')
+DEV_MODE = os.getenv('DEV_MODE', 'false').lower() == 'true'
 
 
 async def init_db():
-    db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@db-postgresql-sfo2-10284-do-user-282100-0.m.db.ondigitalocean.com:25060/bazaar"
+    # db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@db-postgresql-sfo2-10284-do-user-282100-0.m.db.ondigitalocean.com:25060/bazaar"
+    db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
     await Tortoise.init(
         db_url=db_url,
         modules={"models": ["models"]}

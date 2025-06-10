@@ -11,8 +11,6 @@ features:
   - buildpack-stack=ubuntu-22
 
 envs:
-  - key: DB_HOST
-    scope: RUN_AND_BUILD_TIME
   - key: DB_USER
     scope: RUN_AND_BUILD_TIME
   - key: DB_PASSWORD
