@@ -30,4 +30,7 @@ services:
   name: bazaar-tracker
   source_dir: /
   build_command: pip install -r requirements.txt
-  run_command: python main.py
+  processes:
+      - type: web
+        name: web
+        command: python main.py
