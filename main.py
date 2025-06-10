@@ -152,9 +152,10 @@ async def logout_page(request: Request):
     ui.navigate.to('/')
 
 @ui.refreshable
-async def list_of_games(page_number=1, page_size=8, session=None, season=None) -> None:
+async def list_of_games(page_number=1, page_size=8, session=None, season=None, client=None) -> None:
     context.session = session or getattr(context, 'session', None)
     context.season = season if season is not None else getattr(context, 'season', 0)
+    context.client = client or getattr(context, 'client', None)
     async def delete_game(game_id: int) -> None:
         game = await models.Game.get(id=game_id)
         await game.delete()
@@ -550,7 +551,7 @@ async def index(request: Request, season_id: str = None):
             ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
 
         with ui.column().classes('flex-1'):
-            await list_of_games(session=request.session, season=season.value)
+            await list_of_games(session=request.session, season=season.value, client=context.client)
  
         
 
