@@ -12,6 +12,7 @@ import uvicorn
 from datetime import datetime
 from dotenv import load_dotenv
 from nicegui import app, ui, context, page
+from starlette.middleware.sessions import SessionMiddleware
 from tortoise import Tortoise
 from tortoise.expressions import Q
 from types import SimpleNamespace
@@ -32,6 +33,7 @@ BUCKET_UPLOAD_URL = os.getenv('BUCKET_UPLOAD_URL')
 BUCKET_KEY = os.getenv('BUCKET_KEY')
 BUCKET_SECRET = os.getenv('BUCKET_SECRET')
 DEV_MODE = os.getenv('DEV_MODE', 'false').lower() == 'true'
+SESSION_SECRET = os.getenv('SESSION_SECRET', 'change-me')
 
 
 async def init_db():
@@ -49,6 +51,7 @@ async def close_db():
 
 app.on_startup(init_db)
 app.on_shutdown(close_db)
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
 
 
 async def generate_presigned_post(filename):
@@ -99,9 +102,9 @@ def login_page():
             return
         if await authenticate(email.value, password.value):
             message.text = ''
-            # Find the latest season for the user
             user = getattr(context, 'user', None)
             if user:
+                context.request.session['user_id'] = user.id
                 latest_game = await models.Game.filter(player=user.id).order_by('-season').first()
                 latest_season = latest_game.season if latest_game else 3
                 ui.navigate.to(f'/dashboard/{latest_season}')
@@ -122,6 +125,12 @@ def login_page():
     with ui.row().classes('mt-4 gap-2'):
         ui.button('Login', on_click=handle_login).classes('bg-blue-600 text-white px-4 py-2 rounded')
         ui.button('Sign Up', on_click=handle_signup).classes('bg-green-600 text-white px-4 py-2 rounded')
+
+@ui.page('/logout')
+async def logout_page():
+    context.request.session.clear()
+    context.user = None
+    ui.navigate.to('/')
 
 @ui.refreshable
 async def list_of_games(page_number=1, page_size=8) -> None:
@@ -335,19 +344,24 @@ async def index(season_id: str = None):
 
     season = SeasonValue(default_season)
     context.season = season.value
-    
+
+    session_user_id = context.request.session.get('user_id')
+    if session_user_id and not hasattr(context, 'user'):
+        session_user = await models.Users.get_or_none(id=session_user_id)
+        if session_user:
+            context.user = session_user
+
     if DEV_MODE and not hasattr(context, 'user'):
         user, _ = await models.Users.get_or_create(id=1, defaults={'username': 'devuser', 'password': 'placeholder'})
         context.user = user
    
     user = getattr(context, 'user', None)
-
-    if user:
-        ui.label(f'Logged in as: {user.username}').classes('text-sm text-gray-500 mb-2')
-    else:
-        ui.label('Not logged in').classes('text-sm text-red-500 mb-2')
+    if not user:
+        ui.navigate.to('/')
+        return
+    ui.label(f'Logged in as: {user.username}').classes('text-sm text-gray-500 mb-2')
         
-    ui.button('Log Out', on_click=lambda: ui.navigate.to('/')).classes('absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded')
+    ui.button('Log Out', on_click=lambda: ui.navigate.to('/logout')).classes('absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded')
     state = SimpleNamespace(uploaded_url='')
     
     async def handle_upload(e):
