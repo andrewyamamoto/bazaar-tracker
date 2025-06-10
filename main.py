@@ -34,6 +34,14 @@ BUCKET_SECRET = os.getenv('BUCKET_SECRET')
 DEV_MODE = os.getenv('DEV_MODE', 'false').lower() == 'true'
 SESSION_SECRET = os.getenv('SESSION_SECRET')
 
+# version counter for game data; increment whenever a run is added or deleted
+game_data_version = 0
+
+def mark_games_changed():
+    """Increase the global game data version to notify all sessions."""
+    global game_data_version
+    game_data_version += 1
+
 
 async def init_db():
     # db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@db-postgresql-sfo2-10284-do-user-282100-0.m.db.ondigitalocean.com:25060/bazaar"
@@ -156,8 +164,14 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
     context.session = session or getattr(context, 'session', None)
     context.season = season if season is not None else getattr(context, 'season', 0)
     async def delete_game(game_id: int) -> None:
-        game = await models.Game.get(id=game_id)
+        # ensure that the game belongs to the current user before deleting
+        user = await get_current_user()
+        game = await models.Game.get_or_none(id=game_id, player=user.id)
+        if not game:
+            ui.notify('Unauthorized', color='negative')
+            return
         await game.delete()
+        mark_games_changed()
         list_of_games.refresh(page_number=page_number, session=context.session, season=context.season)
 
     user = await get_current_user()
@@ -427,6 +441,8 @@ async def index(request: Request, season_id: str = None):
             upload=state.uploaded_url,
             notes=notes.value,
         )
+        # notify all sessions that game data changed
+        mark_games_changed()
         ranked.value = False
         hero.value = None
         wins.value = 0
@@ -551,6 +567,17 @@ async def index(request: Request, season_id: str = None):
 
         with ui.column().classes('flex-1'):
             await list_of_games(session=request.session, season=season.value)
+
+    # automatically refresh the user's data when any run is created or deleted
+    session_version = game_data_version
+
+    def refresh_if_needed():
+        nonlocal session_version
+        if session_version != game_data_version:
+            session_version = game_data_version
+            list_of_games.refresh(session=request.session, season=season.value)
+
+    ui.timer(1.0, refresh_if_needed)
 
 
  
