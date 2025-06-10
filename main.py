@@ -152,11 +152,12 @@ async def logout_page(request: Request):
     ui.navigate.to('/')
 
 @ui.refreshable
-async def list_of_games(page_number=1, page_size=8) -> None:
+async def list_of_games(page_number=1, page_size=8, session=None) -> None:
+    context.session = session or getattr(context, 'session', None)
     async def delete_game(game_id: int) -> None:
         game = await models.Game.get(id=game_id)
         await game.delete()
-        list_of_games.refresh(page_number=page_number)
+        list_of_games.refresh(page_number=page_number, session=context.session)
 
     user = await get_current_user()
     if not user:
@@ -228,10 +229,10 @@ async def list_of_games(page_number=1, page_size=8) -> None:
         # Pagination controls
         with ui.row().classes('justify-center mt-4'):
             if page_number > 1:
-                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1))
+                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=context.session))
             ui.label(f'Page {page_number} of {total_pages}').classes('mt-2')
             if page_number < total_pages:
-                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1))
+                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=context.session))
     
     # Placement tally chart for each hero
 
@@ -433,7 +434,7 @@ async def index(request: Request, season_id: str = None):
         notes.value = ''
         state.uploaded_url = ''
         upload_component.reset()
-        list_of_games.refresh()
+        list_of_games.refresh(session=context.session)
         ui.notify('Run added!')
     
     with ui.column().classes('w-full'):
@@ -548,7 +549,7 @@ async def index(request: Request, season_id: str = None):
             ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
 
         with ui.column().classes('flex-1'):
-            await list_of_games()
+            await list_of_games(session=request.session)
  
         
 
