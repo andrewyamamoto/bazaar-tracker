@@ -79,12 +79,21 @@ async def create_user(username, password):
     await models.Users.create(username=username, password=hashed)
     return True, "User created successfully."
 
+async def get_current_user():
+    session = getattr(context, 'session', None)
+    if not session:
+        return None
+    user_id = session.get('user_id')
+    if not user_id:
+        return None
+    user = await models.Users.get_or_none(id=user_id)
+    return user
+
 async def authenticate(username, password):
     user = await models.Users.get_or_none(Q(username=username))
     if user and bcrypt.checkpw(password.encode(), user.password.encode()):
-        context.user = user
-        return True
-    return False
+        return user
+    return None
 
 @ui.page('/')
 def login_page(request: Request):
@@ -99,16 +108,13 @@ def login_page(request: Request):
         if not email.value or not password.value:
             message.text = 'Username and password cannot be blank.'
             return
-        if await authenticate(email.value, password.value):
+        user = await authenticate(email.value, password.value)
+        if user:
             message.text = ''
-            user = getattr(context, 'user', None)
-            if user:
-                context.session['user_id'] = user.id
-                latest_game = await models.Game.filter(player=user.id).order_by('-season').first()
-                latest_season = latest_game.season if latest_game else 3
-                ui.navigate.to(f'/dashboard/{latest_season}')
-            else:
-                ui.navigate.to('/dashboard/0')
+            context.session['user_id'] = user.id
+            latest_game = await models.Game.filter(player=user.id).order_by('-season').first()
+            latest_season = latest_game.season if latest_game else 3
+            ui.navigate.to(f'/dashboard/{latest_season}')
         else:
             message.text = 'Invalid email or password.'
 
@@ -129,7 +135,6 @@ def login_page(request: Request):
 async def logout_page(request: Request):
     context.session = request.session
     context.session.clear()
-    context.user = None
     ui.navigate.to('/')
 
 @ui.refreshable
@@ -139,7 +144,7 @@ async def list_of_games(page_number=1, page_size=8) -> None:
         await game.delete()
         list_of_games.refresh(page_number=page_number)
 
-    user = getattr(context, 'user', None)
+    user = await get_current_user()
     if not user:
         ui.label('Not logged in').classes('text-red-500')
         ui.navigate.to('/')
@@ -347,17 +352,10 @@ async def index(request: Request, season_id: str = None):
     season = SeasonValue(default_season)
     context.season = season.value
 
-    session_user_id = context.session.get('user_id')
-    if session_user_id and not hasattr(context, 'user'):
-        session_user = await models.Users.get_or_none(id=session_user_id)
-        if session_user:
-            context.user = session_user
-
-    if DEV_MODE and not hasattr(context, 'user'):
+    user = await get_current_user()
+    if DEV_MODE and not user:
         user, _ = await models.Users.get_or_create(id=1, defaults={'username': 'devuser', 'password': 'placeholder'})
-        context.user = user
-   
-    user = getattr(context, 'user', None)
+        context.session['user_id'] = user.id
     if not user:
         ui.navigate.to('/')
         return
