@@ -13,6 +13,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from nicegui import app, ui, context, page
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi import Request
 from tortoise import Tortoise
 from tortoise.expressions import Q
 from types import SimpleNamespace
@@ -89,7 +90,8 @@ async def authenticate(username, password):
     return False
 
 @ui.page('/')
-def login_page():
+def login_page(request: Request):
+    context.session = request.session
     ui.page_title("Bazaar Tracker")
     ui.label('Login').classes('text-3xl font-bold mb-4')
     email = ui.input('Username').props('type=text').classes('w-full max-w-sm')
@@ -104,7 +106,7 @@ def login_page():
             message.text = ''
             user = getattr(context, 'user', None)
             if user:
-                context.request.session['user_id'] = user.id
+                context.session['user_id'] = user.id
                 latest_game = await models.Game.filter(player=user.id).order_by('-season').first()
                 latest_season = latest_game.season if latest_game else 3
                 ui.navigate.to(f'/dashboard/{latest_season}')
@@ -127,8 +129,9 @@ def login_page():
         ui.button('Sign Up', on_click=handle_signup).classes('bg-green-600 text-white px-4 py-2 rounded')
 
 @ui.page('/logout')
-async def logout_page():
-    context.request.session.clear()
+async def logout_page(request: Request):
+    context.session = request.session
+    context.session.clear()
     context.user = None
     ui.navigate.to('/')
 
@@ -320,7 +323,9 @@ async def list_of_games(page_number=1, page_size=8) -> None:
         
 
 @ui.page('/dashboard/{season_id}')
-async def index(season_id: str = None):
+async def index(request: Request, season_id: str = None):
+
+    context.session = request.session
     
     ui.page_title("Bazaar Tracker")
     season_source = season_id or context.query.get('season', '0')
@@ -345,7 +350,7 @@ async def index(season_id: str = None):
     season = SeasonValue(default_season)
     context.season = season.value
 
-    session_user_id = context.request.session.get('user_id')
+    session_user_id = context.session.get('user_id')
     if session_user_id and not hasattr(context, 'user'):
         session_user = await models.Users.get_or_none(id=session_user_id)
         if session_user:
