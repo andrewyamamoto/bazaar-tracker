@@ -58,7 +58,13 @@ async def close_db():
 
 app.on_startup(init_db)
 app.on_shutdown(close_db)
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    max_age=60 * 60 * 24 * 7,  # one week
+    same_site="lax",
+    https_only=not DEV_MODE,
+)
 
 
 async def generate_presigned_post(filename):
@@ -117,6 +123,19 @@ async def api_login(request: Request):
         return {'success': True, 'redirect': f'/dashboard/{latest_season}'}
     return {'success': False, 'error': 'Invalid email or password.'}
 
+@app.post('/api/signup')
+async def api_signup(request: Request):
+    data = await request.json()
+    username = data.get('username')
+    password = data.get('password')
+    success, msg = await create_user(username, password)
+    return {'success': success, 'message': msg}
+
+@app.post('/api/logout')
+async def api_logout(request: Request):
+    request.session.clear()
+    return {'success': True}
+
 @ui.page('/')
 def login_page(request: Request):
     context.session = request.session
@@ -144,9 +163,12 @@ def login_page(request: Request):
         if not email.value or not password.value:
             message.text = 'Username and password cannot be blank.'
             return
-        success, msg = await create_user(email.value, password.value)
-        message.text = msg
-        if success:
+        payload = {"username": email.value, "password": password.value}
+        result = await ui.run_javascript(
+            f"return fetch('/api/signup', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({json.dumps(payload)})}}).then(r => r.json())"
+        )
+        message.text = result.get('message', '')
+        if result.get('success'):
             ui.notify('Account created! Please log in.', color='positive')
 
     with ui.row().classes('mt-4 gap-2'):
