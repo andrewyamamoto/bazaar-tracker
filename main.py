@@ -198,9 +198,10 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
     )
 
     with ui.column().classes('w-full'):
-        with ui.element('div').style(grid_style).classes('font-bold'):
-            for header in ['Player', 'Hero', 'Mode', 'Win/Day', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
-                ui.label(header).classes('truncate text-center')
+        if games:
+            with ui.element('div').style(grid_style).classes('font-bold'):
+                for header in ['Player', 'Hero', 'Mode', 'Win/Day', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
+                    ui.label(header).classes('truncate text-center')
 
         for game in games:
             username = game.player.username
@@ -242,12 +243,13 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
                 ui.separator().classes('col-span-9 my-1')
 
         # Pagination controls
-        with ui.row().classes('justify-center mt-4'):
-            if page_number > 1:
-                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=context.session, season=context.season))
-            ui.label(f'Page {page_number} of {total_pages}').classes('mt-2')
-            if page_number < total_pages:
-                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=context.session, season=context.season))
+        if games:
+            with ui.row().classes('justify-center mt-4'):
+                if page_number > 1:
+                    ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=context.session, season=context.season))
+                ui.label(f'Page {page_number} of {total_pages}').classes('mt-2')
+                if page_number < total_pages:
+                    ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=context.session, season=context.season))
     
     # Placement tally chart for each hero
 
@@ -451,7 +453,7 @@ async def index(request: Request, season_id: str = None):
         notes.value = ''
         state.uploaded_url = ''
         upload_component.reset()
-        list_of_games.refresh(session=context.session, season=season.value)
+        list_of_games.refresh(session=context.session, season=context.season)
         ui.notify('Run added!')
     
     with ui.column().classes('w-full'):
@@ -479,34 +481,7 @@ async def index(request: Request, season_id: str = None):
                 ui.label('Ranked').bind_visibility_from(ranked, 'visible', lambda _: True)
 
             hero_options = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
-            with ui.row().classes('gap-4'):
-                hero_checkboxes = []
-                for h in hero_options:
-                    cb = ui.checkbox(h, value=False)
-                    hero_checkboxes.append(cb)
-
-            def update_hero_selection(e):
-                for cb in hero_checkboxes:
-                    if cb != e.sender:
-                        cb.value = False
-
-            for cb in hero_checkboxes:
-                cb.value = False
-                cb.on('change', update_hero_selection)
-
-            class HeroValue:
-                @property
-                def value(self):
-                    for cb in hero_checkboxes:
-                        if cb.value:
-                            return cb.text
-                    return None
-                @value.setter
-                def value(self, v):
-                    for cb in hero_checkboxes:
-                        cb.value = (cb.text == v)
-
-            hero = HeroValue()
+            hero = ui.radio(hero_options, value=None).classes('w-full').props('inline')
 
             wins = ui.slider(min=0, max=10, step=1, value=0).classes('w-full')
             wins_label = ui.label(f"Wins: {wins.value}")
