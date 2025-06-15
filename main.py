@@ -463,6 +463,7 @@ async def index(request: Request, season_id: str = None):
 
         @ui.refreshable
         async def stats_tables():
+            
             ranked_heroes, ranked_stats = await collect_stats(True)
             unranked_heroes, unranked_stats = await collect_stats(False)
 
@@ -582,7 +583,7 @@ async def index(request: Request, season_id: str = None):
 
         with ui.column().classes('flex-1'):
             games_container = ui.column().classes('w-full')
-            pagination_row = ui.row().classes('justify-end mt-4')
+            pagination_row = ui.row().classes('w-full justify-end mt-4')
             await list_of_games()
             await stats_tables()
 
