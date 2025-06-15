@@ -34,13 +34,12 @@ BUCKET_SECRET = os.getenv('BUCKET_SECRET')
 DEV_MODE = os.getenv('DEV_MODE', 'false').lower() == 'true'
 SESSION_SECRET = os.getenv('SESSION_SECRET')
 
-# version counter for game data; increment whenever a run is added or deleted
-game_data_version = 0
+# per-user version counters for game data; increment whenever a run is added or deleted
+game_data_version = {}
 
-def mark_games_changed():
-    """Increase the global game data version to notify all sessions."""
-    global game_data_version
-    game_data_version += 1
+def mark_games_changed(user_id: int) -> None:
+    """Increase the game data version for the specified user."""
+    game_data_version[user_id] = game_data_version.get(user_id, 0) + 1
 
 
 async def delete_game_by_id(game_id: int) -> bool:
@@ -211,7 +210,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
         if not success:
 
             return
-        mark_games_changed()
+        mark_games_changed(user.id)
         list_of_games.refresh(page_number=page_number, session=current_session, season=current_season)
 
     user = await get_current_user()
@@ -483,8 +482,8 @@ async def index(request: Request, season_id: str = None):
             upload=state.uploaded_url,
             notes=notes.value,
         )
-        # notify all sessions that game data changed
-        mark_games_changed()
+        # notify the current user's session that their game data changed
+        mark_games_changed(user.id)
         ranked.value = False
         hero.value = None
         wins.value = 0
@@ -584,12 +583,13 @@ async def index(request: Request, season_id: str = None):
             await list_of_games(session=request.session, season=season.value)
 
     # automatically refresh the user's data when any run is created or deleted
-    session_version = game_data_version
+    session_version = game_data_version.get(user.id, 0)
 
     def refresh_if_needed():
         nonlocal session_version
-        if session_version != game_data_version:
-            session_version = game_data_version
+        current_version = game_data_version.get(user.id, 0)
+        if session_version != current_version:
+            session_version = current_version
             list_of_games.refresh(session=request.session, season=season.value)
 
     ui.timer(1.0, refresh_if_needed)
