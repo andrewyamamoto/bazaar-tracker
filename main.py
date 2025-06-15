@@ -461,7 +461,7 @@ async def index(request: Request, season_id: str = None):
 
     async def create() -> None:
         """Create a game entry and refresh without flicker."""
-
+        add_run_btn.props('disable')
         await models.Game.create(
             player=player.value,
             season=season.value or 0,
@@ -487,6 +487,7 @@ async def index(request: Request, season_id: str = None):
         notes.value = ''
         state.uploaded_url = ''
         upload_component.reset()
+        add_run_btn.props(remove='disable')
         ui.notify('Run added!')
     
     with ui.column().classes('w-full'):
@@ -571,7 +572,7 @@ async def index(request: Request, season_id: str = None):
                 char_count_label.text = f'{len(value)}/{MAX_NOTES_LENGTH}'
 
             ui.timer(0.25, update_char_count)
-            ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
+            add_run_btn = ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
 
         with ui.column().classes('flex-1'):
             await list_of_games()
