@@ -428,6 +428,71 @@ async def index(request: Request, season_id: str = None):
     with ui.column().classes('w-full'):
         ui.label('Bazaar Tracker').classes('text-3xl font-bold')
         ui.label(f'Current Season: {season.value}').classes('text-lg')
+
+        async def get_heroes():
+            heroes = await models.Game.filter(player_id=user.id, season=season.value).distinct().values_list("hero", flat=True)
+            return [h.lower().capitalize() for h in heroes]
+
+        def categorize(game):
+            if game.wins == 10 and game.finished == 10:
+                return 'Perfect Game'
+            if game.wins == 10:
+                return '1st'
+            if game.wins >= 7:
+                return '2nd'
+            if game.wins >= 4:
+                return '3rd'
+            return 'No Placement'
+
+        async def collect_stats(rank_value: bool):
+            heroes = await get_heroes()
+            stats = {h: {'No Placement': 0, '3rd': 0, '2nd': 0, '1st': 0, 'Perfect Game': 0} for h in heroes}
+            games = await models.Game.filter(player_id=user.id, season=season.value, ranked=rank_value)
+            for g in games:
+                hero = g.hero.lower().capitalize()
+                category = categorize(g)
+                if hero not in stats:
+                    stats[hero] = {'No Placement': 0, '3rd': 0, '2nd': 0, '1st': 0, 'Perfect Game': 0}
+                stats[hero][category] += 1
+            return heroes, stats
+
+        ranked_heroes, ranked_stats = await collect_stats(True)
+        unranked_heroes, unranked_stats = await collect_stats(False)
+
+        columns = [
+            {"name": "hero", "label": "Hero", "field": "hero"},
+            {"name": "No Placement", "label": "No Placement", "field": "No Placement"},
+            {"name": "3rd", "label": "3rd", "field": "3rd"},
+            {"name": "2nd", "label": "2nd", "field": "2nd"},
+            {"name": "1st", "label": "1st", "field": "1st"},
+            {"name": "Perfect Game", "label": "Perfect Game", "field": "Perfect Game"},
+        ]
+
+        ranked_rows = [
+            {"hero": h,
+             "No Placement": ranked_stats[h]['No Placement'],
+             "3rd": ranked_stats[h]['3rd'],
+             "2nd": ranked_stats[h]['2nd'],
+             "1st": ranked_stats[h]['1st'],
+             "Perfect Game": ranked_stats[h]['Perfect Game']} for h in ranked_heroes
+        ]
+
+        unranked_rows = [
+            {"hero": h,
+             "No Placement": unranked_stats[h]['No Placement'],
+             "3rd": unranked_stats[h]['3rd'],
+             "2nd": unranked_stats[h]['2nd'],
+             "1st": unranked_stats[h]['1st'],
+             "Perfect Game": unranked_stats[h]['Perfect Game']} for h in unranked_heroes
+        ]
+
+        with ui.row().classes('w-full gap-4'):
+            with ui.column().classes('flex-1'):
+                ui.label('Ranked Game Stats').classes('text-lg')
+                ui.table(columns=columns, rows=ranked_rows).classes('w-full')
+            with ui.column().classes('flex-1'):
+                ui.label('Non-Ranked Game Stats').classes('text-lg')
+                ui.table(columns=columns, rows=unranked_rows).classes('w-full')
         
     with ui.row().classes('flex w-full gap-4'):
 
