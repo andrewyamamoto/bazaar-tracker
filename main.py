@@ -304,71 +304,79 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
         # Ranked placement tally
         with ui.card().classes('w-full sm:w-[48%] min-w-[300px]'):
 
-            placement_categories = ['No Placement', 'Bronze', 'Silver', 'Gold', 'Perfect']
-            placement_counts_by_category = {hero: [0, 0, 0, 0, 0] for hero in hero_options}
+            placement_categories = ['No Placement', '3rd', '2nd', '1st', 'Perfect Game']
+            ranked_counts_by_hero = {hero: [0, 0, 0, 0, 0] for hero in hero_options}
+
+            def placement_index(game):
+                if game.wins == 10 and game.finished == 10:
+                    return 4
+                if game.wins == 10:
+                    return 3
+                if 7 <= game.wins <= 9:
+                    return 2
+                if 4 <= game.wins <= 6:
+                    return 1
+                return 0
 
             for game in games_for_chart:
                 if not game.ranked:
                     continue  # Only count ranked games
                 hero = game.hero.lower().capitalize()
-                if hero not in placement_counts_by_category:
+                if hero not in ranked_counts_by_hero:
                     continue
-                if game.wins == 10 and game.finished == 10:
-                    placement_counts_by_category[hero][4] += 1  # Perfect
-                elif 8 <= game.wins <= 10 and game.finished > 10:
-                    placement_counts_by_category[hero][3] += 1  # Gold
-                elif 4 <= game.wins <= 7:
-                    placement_counts_by_category[hero][2] += 1  # Silver
-                elif 1 <= game.wins <= 3:
-                    placement_counts_by_category[hero][1] += 1  # Bronze
-                else:
-                    placement_counts_by_category[hero][0] += 1  # No Placement
+                idx = placement_index(game)
+                ranked_counts_by_hero[hero][idx] += 1
 
             columns = [
-                {"name": "placement", "label": "Placement", "field": "placement", "align": "left"},
-            ] + [
-                {"name": hero, "label": hero, "field": hero, "align": "center"}
-                for hero in hero_options
+                {"name": "hero", "label": "Hero", "field": "hero", "align": "left"},
+                {"name": "no_placement", "label": "No Placement", "field": "no_placement", "align": "center"},
+                {"name": "third", "label": "3rd", "field": "third", "align": "center"},
+                {"name": "second", "label": "2nd", "field": "second", "align": "center"},
+                {"name": "first", "label": "1st", "field": "first", "align": "center"},
+                {"name": "perfect_game", "label": "Perfect Game", "field": "perfect_game", "align": "center"},
             ]
-            rows = []
-            for idx, category in enumerate(placement_categories):
-                row = {"placement": category}
-                for hero in hero_options:
-                    row[hero] = placement_counts_by_category[hero][idx]
-                rows.append(row)
+
+            ranked_rows = []
+            for hero in hero_options:
+                row = {
+                    "hero": hero,
+                    "no_placement": ranked_counts_by_hero[hero][0],
+                    "third": ranked_counts_by_hero[hero][1],
+                    "second": ranked_counts_by_hero[hero][2],
+                    "first": ranked_counts_by_hero[hero][3],
+                    "perfect_game": ranked_counts_by_hero[hero][4],
+                }
+                ranked_rows.append(row)
 
             ui.label('Ranked Placement').classes('font-bold mb-2')
             with ui.element('div').classes('overflow-x-auto w-full'):
-                with ui.table(columns=columns, rows=rows).classes('w-full text-center rounded-lg border border-gray-700'):
+                with ui.table(columns=columns, rows=ranked_rows).classes('w-full text-center rounded-lg border border-gray-700'):
                     pass
 
         # Unranked placement tally
         with ui.card().classes('w-full sm:w-[48%] min-w-[300px]'):
 
-            unranked_counts_by_category = {hero: [0, 0, 0, 0, 0] for hero in hero_options}
+            unranked_counts_by_hero = {hero: [0, 0, 0, 0, 0] for hero in hero_options}
 
             for game in games_for_chart:
                 if game.ranked:
                     continue  # Only count unranked games
                 hero = game.hero.lower().capitalize()
-                if hero not in unranked_counts_by_category:
+                if hero not in unranked_counts_by_hero:
                     continue
-                if game.wins == 10 and game.finished == 10:
-                    unranked_counts_by_category[hero][4] += 1  # Perfect
-                elif 8 <= game.wins <= 10 and game.finished > 10:
-                    unranked_counts_by_category[hero][3] += 1  # Gold
-                elif 4 <= game.wins <= 7:
-                    unranked_counts_by_category[hero][2] += 1  # Silver
-                elif 1 <= game.wins <= 3:
-                    unranked_counts_by_category[hero][1] += 1  # Bronze
-                else:
-                    unranked_counts_by_category[hero][0] += 1  # No Placement
+                idx = placement_index(game)
+                unranked_counts_by_hero[hero][idx] += 1
 
             unranked_rows = []
-            for idx, category in enumerate(placement_categories):
-                row = {"placement": category}
-                for hero in hero_options:
-                    row[hero] = unranked_counts_by_category[hero][idx]
+            for hero in hero_options:
+                row = {
+                    "hero": hero,
+                    "no_placement": unranked_counts_by_hero[hero][0],
+                    "third": unranked_counts_by_hero[hero][1],
+                    "second": unranked_counts_by_hero[hero][2],
+                    "first": unranked_counts_by_hero[hero][3],
+                    "perfect_game": unranked_counts_by_hero[hero][4],
+                }
                 unranked_rows.append(row)
 
             ui.label('Unranked Placement').classes('font-bold mb-2')
