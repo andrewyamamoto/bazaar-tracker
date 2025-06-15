@@ -12,6 +12,7 @@ import uvicorn
 
 from dotenv import load_dotenv
 from contextvars import ContextVar
+from typing import Optional
 from nicegui import app, ui, context
 from fastapi import Request
 from starlette.middleware.sessions import SessionMiddleware
@@ -39,7 +40,7 @@ SESSION_SECRET = os.getenv('SESSION_SECRET')
 game_data_version = 0
 
 # context variables for the current session and season
-current_session: ContextVar[dict | None] = ContextVar('current_session', default=None)
+current_session: ContextVar[Optional[dict]] = ContextVar('current_session', default=None)
 current_season: ContextVar[int] = ContextVar('current_season', default=0)
 
 def mark_games_changed():
