@@ -136,7 +136,7 @@ async def api_login(request: Request):
     user = await authenticate(username, password)
     if user:
         request.session['user_id'] = user.id
-        latest_game = await models.Game.filter(player=user.id).order_by('-season').first()
+        latest_game = await models.Game.filter(player_id=user.id).order_by('-season').first()
         latest_season = latest_game.season if latest_game else 3
         return {'success': True, 'redirect': f'/dashboard/{latest_season}'}
     return {'success': False, 'error': 'Invalid email or password.'}
@@ -207,6 +207,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
         # ensure that the game belongs to the current user before deleting
         success = await delete_game_by_id(game_id)
         if not success:
+
             return
         mark_games_changed()
         list_of_games.refresh(page_number=page_number, session=context.session, season=context.season)
@@ -219,8 +220,8 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
 
     season = context.season
 
-    total_games = await models.Game.filter(player=user.id, season=season).count()
-    games = await models.Game.filter(player=user.id, season=season)\
+    total_games = await models.Game.filter(player_id=user.id, season=season).count()
+    games = await models.Game.filter(player_id=user.id, season=season)\
         .order_by('-played')\
         .offset((page_number - 1) * page_size)\
         .limit(page_size)\
@@ -291,7 +292,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
     # Placement tally chart for each hero
 
     # Fetch placement data for the current user and season
-    games_for_chart = await models.Game.filter(player=user.id, season=season).all()
+    games_for_chart = await models.Game.filter(player_id=user.id, season=season).all()
 
     # Prepare data: {hero: [count of 0 wins, 1 win, ..., 10 wins]}
     hero_options = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
