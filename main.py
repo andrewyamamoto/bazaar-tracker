@@ -194,6 +194,8 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
             return
         await game.delete()
         mark_games_changed()
+        # keep this session in sync to avoid duplicate refresh
+        context.session_version = game_data_version
         list_of_games.refresh(page_number=page_number, session=context.session, season=context.season)
 
     user = await get_current_user()
@@ -465,6 +467,8 @@ async def index(request: Request, season_id: str = None):
         )
         # notify all sessions that game data changed
         mark_games_changed()
+        # keep this session in sync to avoid duplicate refresh
+        context.session_version = game_data_version
         ranked.value = False
         hero.value = None
         wins.value = 0
@@ -591,12 +595,13 @@ async def index(request: Request, season_id: str = None):
             await list_of_games(session=request.session, season=season.value)
 
     # automatically refresh the user's data when any run is created or deleted
-    session_version = game_data_version
+    # store the current version for this client in the request context
+    context.session_version = game_data_version
 
     def refresh_if_needed():
-        nonlocal session_version
-        if session_version != game_data_version:
-            session_version = game_data_version
+        # refresh only when new data is available
+        if getattr(context, 'session_version', 0) != game_data_version:
+            context.session_version = game_data_version
             list_of_games.refresh(session=request.session, season=season.value)
 
     ui.timer(1.0, refresh_if_needed)
