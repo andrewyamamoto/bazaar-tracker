@@ -201,8 +201,6 @@ async def logout_page(request: Request):
     context.session.clear()
     ui.navigate.to('/')
 
-        
-
 @ui.page('/dashboard/{season_id}')
 async def index(request: Request, season_id: str = None):
 
@@ -371,12 +369,13 @@ async def index(request: Request, season_id: str = None):
             await add_row(game)
 
         pagination_row.clear()
-        with pagination_row:
-            if current_page > 1:
-                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=current_page - 1))
-            page_label = ui.label(f'Page {current_page} of {total_pages}').classes('mt-2')
-            if current_page < total_pages:
-                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=current_page + 1))
+        if games:
+            with pagination_row:
+                if current_page > 1:
+                    ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=current_page - 1))
+                page_label = ui.label(f'Page {current_page} of {total_pages}').classes('mt-2')
+                if current_page < total_pages:
+                    ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=current_page + 1))
 
     async def delete_game(game_id: int) -> None:
         success = await delete_game_by_id(game_id)
@@ -586,7 +585,7 @@ async def index(request: Request, season_id: str = None):
 
         with ui.column().classes('flex-1'):
             games_container = ui.column().classes('w-full')
-            pagination_row = ui.row().classes('justify-center mt-4')
+            pagination_row = ui.row().classes('justify-end mt-4')
             await list_of_games()
             await stats_tables()
 
