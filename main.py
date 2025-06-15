@@ -52,7 +52,8 @@ async def delete_game_by_id(game_id: int) -> bool:
     if not user:
         ui.notify('Unauthorized', color='negative')
         return False
-    game = await models.Game.get_or_none(id=game_id, player=user.id)
+    # Use `player_id` to ensure we filter by the foreign key column
+    game = await models.Game.get_or_none(id=game_id, player_id=user.id)
     if not game:
         ui.notify('Unauthorized', color='negative')
         return False
