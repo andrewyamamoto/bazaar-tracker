@@ -243,6 +243,7 @@ async def index(request: Request, season_id: str = None):
         
     ui.button('Log Out', on_click=lambda: ui.navigate.to('/logout')).classes('absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded')
     state = SimpleNamespace(uploaded_url='')
+    HERO_OPTIONS = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
 
     current_page = 1
     page_size = 8
@@ -385,6 +386,7 @@ async def index(request: Request, season_id: str = None):
         if row:
             row.delete()
         await load_page(current_page)
+        await stats_tables.refresh()
         nonlocal session_version
         mark_games_changed(user.id)
         session_version = game_data_version.get(user.id, 0)
@@ -412,6 +414,7 @@ async def index(request: Request, season_id: str = None):
 
             nonlocal session_version
             await load_page(current_page)
+            await stats_tables.refresh()
             mark_games_changed(user.id)
             session_version = game_data_version.get(user.id, 0)
 
@@ -433,8 +436,11 @@ async def index(request: Request, season_id: str = None):
         ui.label(f'Current Season: {season.value}').classes('text-lg')
 
         async def get_heroes():
-            heroes = await models.Game.filter(player_id=user.id, season=season.value).values_list('hero', flat=True).distinct()
-            return [h.lower().capitalize() for h in heroes]
+            heroes = await models.Game.filter(player_id=user.id, season=season.value).distinct().values_list("hero", flat=True)
+
+            all_heroes = {h.lower().capitalize() for h in heroes}
+            all_heroes.update(HERO_OPTIONS)
+            return sorted(all_heroes)
 
         def categorize(game):
             if game.wins == 10 and game.finished == 10:
@@ -459,43 +465,45 @@ async def index(request: Request, season_id: str = None):
                 stats[hero][category] += 1
             return heroes, stats
 
-        ranked_heroes, ranked_stats = await collect_stats(True)
-        unranked_heroes, unranked_stats = await collect_stats(False)
+        @ui.refreshable
+        async def stats_tables():
+            ranked_heroes, ranked_stats = await collect_stats(True)
+            unranked_heroes, unranked_stats = await collect_stats(False)
 
-        columns = [
-            {"name": "hero", "label": "Hero", "field": "hero"},
-            {"name": "No Placement", "label": "No Placement", "field": "No Placement"},
-            {"name": "3rd", "label": "3rd", "field": "3rd"},
-            {"name": "2nd", "label": "2nd", "field": "2nd"},
-            {"name": "1st", "label": "1st", "field": "1st"},
-            {"name": "Perfect Game", "label": "Perfect Game", "field": "Perfect Game"},
-        ]
+            columns = [
+                {"name": "hero", "label": "Hero", "field": "hero"},
+                {"name": "No Placement", "label": "No Placement", "field": "No Placement"},
+                {"name": "3rd", "label": "3rd", "field": "3rd"},
+                {"name": "2nd", "label": "2nd", "field": "2nd"},
+                {"name": "1st", "label": "1st", "field": "1st"},
+                {"name": "Perfect Game", "label": "Perfect Game", "field": "Perfect Game"},
+            ]
 
-        ranked_rows = [
-            {"hero": h,
-             "No Placement": ranked_stats[h]['No Placement'],
-             "3rd": ranked_stats[h]['3rd'],
-             "2nd": ranked_stats[h]['2nd'],
-             "1st": ranked_stats[h]['1st'],
-             "Perfect Game": ranked_stats[h]['Perfect Game']} for h in ranked_heroes
-        ]
+            ranked_rows = [
+                {"hero": h,
+                 "No Placement": ranked_stats[h]['No Placement'],
+                 "3rd": ranked_stats[h]['3rd'],
+                 "2nd": ranked_stats[h]['2nd'],
+                 "1st": ranked_stats[h]['1st'],
+                 "Perfect Game": ranked_stats[h]['Perfect Game']} for h in ranked_heroes
+            ]
 
-        unranked_rows = [
-            {"hero": h,
-             "No Placement": unranked_stats[h]['No Placement'],
-             "3rd": unranked_stats[h]['3rd'],
-             "2nd": unranked_stats[h]['2nd'],
-             "1st": unranked_stats[h]['1st'],
-             "Perfect Game": unranked_stats[h]['Perfect Game']} for h in unranked_heroes
-        ]
+            unranked_rows = [
+                {"hero": h,
+                 "No Placement": unranked_stats[h]['No Placement'],
+                 "3rd": unranked_stats[h]['3rd'],
+                 "2nd": unranked_stats[h]['2nd'],
+                 "1st": unranked_stats[h]['1st'],
+                 "Perfect Game": unranked_stats[h]['Perfect Game']} for h in unranked_heroes
+            ]
 
-        with ui.row().classes('w-full gap-4'):
-            with ui.column().classes('flex-1'):
-                ui.label('Ranked Game Stats').classes('text-lg')
-                ui.table(columns=columns, rows=ranked_rows).classes('w-full')
-            with ui.column().classes('flex-1'):
-                ui.label('Non-Ranked Game Stats').classes('text-lg')
-                ui.table(columns=columns, rows=unranked_rows).classes('w-full')
+            with ui.row().classes('w-full gap-4'):
+                with ui.column().classes('flex-1'):
+                    ui.label('Ranked Game Stats').classes('text-lg')
+                    ui.table(columns=columns, rows=ranked_rows).classes('w-full')
+                with ui.column().classes('flex-1'):
+                    ui.label('Non-Ranked Game Stats').classes('text-lg')
+                    ui.table(columns=columns, rows=unranked_rows).classes('w-full')
         
     with ui.row().classes('flex w-full gap-4'):
 
@@ -517,8 +525,7 @@ async def index(request: Request, season_id: str = None):
                 ranked = ui.checkbox()
                 ui.label('Ranked').bind_visibility_from(ranked, 'visible', lambda _: True)
 
-            hero_options = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
-            hero = ui.radio(hero_options, value=None).classes('w-full').props('inline')
+            hero = ui.radio(HERO_OPTIONS, value=None).classes('w-full').props('inline')
 
             wins = ui.slider(min=0, max=10, step=1, value=0).classes('w-full')
             wins_label = ui.label(f"Wins: {wins.value}")
@@ -581,6 +588,7 @@ async def index(request: Request, season_id: str = None):
             games_container = ui.column().classes('w-full')
             pagination_row = ui.row().classes('justify-center mt-4')
             await list_of_games()
+            await stats_tables()
 
     # automatically refresh the user's data when any run is created or deleted
     session_version = game_data_version.get(user.id, 0)
@@ -591,6 +599,7 @@ async def index(request: Request, season_id: str = None):
         if session_version != current_version:
             session_version = current_version
             ui.run_async(load_page(current_page))
+            ui.run_async(stats_tables.refresh())
 
     ui.timer(1.0, refresh_if_needed)
 
