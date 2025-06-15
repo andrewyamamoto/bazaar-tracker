@@ -240,6 +240,7 @@ async def index(request: Request, season_id: str = None):
         
     ui.button('Log Out', on_click=lambda: ui.navigate.to('/logout')).classes('absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded')
     state = SimpleNamespace(uploaded_url='')
+    HERO_OPTIONS = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
 
     current_page = 1
     page_size = 8
@@ -434,7 +435,9 @@ async def index(request: Request, season_id: str = None):
         async def get_heroes():
             heroes = await models.Game.filter(player_id=user.id, season=season.value).distinct().values_list("hero", flat=True)
 
-            return [h.lower().capitalize() for h in heroes]
+            all_heroes = {h.lower().capitalize() for h in heroes}
+            all_heroes.update(HERO_OPTIONS)
+            return sorted(all_heroes)
 
         def categorize(game):
             if game.wins == 10 and game.finished == 10:
@@ -519,8 +522,7 @@ async def index(request: Request, season_id: str = None):
                 ranked = ui.checkbox()
                 ui.label('Ranked').bind_visibility_from(ranked, 'visible', lambda _: True)
 
-            hero_options = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
-            hero = ui.radio(hero_options, value=None).classes('w-full').props('inline')
+            hero = ui.radio(HERO_OPTIONS, value=None).classes('w-full').props('inline')
 
             wins = ui.slider(min=0, max=10, step=1, value=0).classes('w-full')
             wins_label = ui.label(f"Wins: {wins.value}")
@@ -583,8 +585,7 @@ async def index(request: Request, season_id: str = None):
             games_container = ui.column().classes('w-full')
             pagination_row = ui.row().classes('justify-center mt-4')
             await list_of_games()
-
-    await stats_tables()
+            await stats_tables()
 
     # automatically refresh the user's data when any run is created or deleted
     session_version = game_data_version.get(user.id, 0)
