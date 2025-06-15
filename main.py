@@ -381,107 +381,8 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
         #     grid.update()
         
 
-@ui.page('/dashboard/{season_id}')
-async def index(request: Request, season_id: str = None):
-
-    context.session = request.session
-    current_session = request.session
-    
-    ui.page_title("Bazaar Tracker")
-    season_source = season_id or context.query.get('season', '0')
-    
-    try:
-        default_season = int(season_source)
-    except ValueError:
-        default_season = 0
-
-    class SeasonValue:
-        def __init__(self, default):
-            self._value = default
-
-        @property
-        def value(self):
-            return self._value
-
-        @value.setter
-        def value(self, v):
-            self._value = v
-
-    season = SeasonValue(default_season)
-    context.season = season.value
-
-    user = await get_current_user()
-    if DEV_MODE and not user:
-        user, _ = await models.Users.get_or_create(id=1, defaults={'username': 'devuser', 'password': 'placeholder'})
-        context.session['user_id'] = user.id
-    if not user:
-        ui.navigate.to('/')
-        return
-    ui.label(f'Logged in as: {user.username}').classes('text-sm text-gray-500 mb-2')
-        
-    ui.button('Log Out', on_click=lambda: ui.navigate.to('/logout')).classes('absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded')
-    state = SimpleNamespace(uploaded_url='')
-    
-    async def handle_upload(e):
-
-        if not e or not getattr(e, 'content', None):
-            ui.notify('No file uploaded (optional)', color='warning')
-            return
-
-        try:
-            folder = 'screenshots'
-            original_name = e.name or "upload"
-            hash_digest = hashlib.sha256((original_name + str(time.time())).encode()).hexdigest()[:16]
-            _, ext = os.path.splitext(original_name)
-            name = f"{hash_digest}{ext.lower()}"
-            key = f"{folder}/{name}"
-            
-            presigned = await generate_presigned_post(name)
-            fields = presigned['fields']
-            data = fields.copy()
-            files = {'file': (name, e.content, e.type or 'application/octet-stream')}
-
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(presigned['url'], data=data, files=files)
-
-            if resp.status_code in (200, 204):
-                CUSTOM_CDN_BASE_URL = "https://bazaar-files.misterdroo.com"
-
-                state.uploaded_url = f"{CUSTOM_CDN_BASE_URL}/{fields['key']}"
-                ui.notify('Upload successful!')
-            else:
-                ui.notify('Upload failed!', color='negative')
-
-        except Exception as ex:
-            print('Upload exception:', ex)
-            ui.notify('Unexpected error during upload', color='negative')
-
-    async def create() -> None:
-
-        await models.Game.create(
-            player=player.value,
-            season=season.value or 0,
-            ranked=ranked.value,
-            hero=hero.value,
-            wins=wins.value,
-            finished=finished.value,
-            media=media.value,
-            upload=state.uploaded_url,
-            notes=notes.value,
-        )
-        # notify all sessions that game data changed
-        mark_games_changed()
-        # keep this session in sync to avoid duplicate refresh
-        context.session_version = game_data_version
-        ranked.value = False
-        hero.value = None
-        wins.value = 0
-        finished.value = 0
-        media.value = ''
-        notes.value = ''
-        state.uploaded_url = ''
-        upload_component.reset()
         list_of_games.refresh(session=current_session, season=season.value)
+
         ui.notify('Run added!')
     
     with ui.column().classes('w-full'):
@@ -509,34 +410,7 @@ async def index(request: Request, season_id: str = None):
                 ui.label('Ranked').bind_visibility_from(ranked, 'visible', lambda _: True)
 
             hero_options = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
-            with ui.row().classes('gap-4'):
-                hero_checkboxes = []
-                for h in hero_options:
-                    cb = ui.checkbox(h, value=False)
-                    hero_checkboxes.append(cb)
-
-            def update_hero_selection(e):
-                for cb in hero_checkboxes:
-                    if cb != e.sender:
-                        cb.value = False
-
-            for cb in hero_checkboxes:
-                cb.value = False
-                cb.on('change', update_hero_selection)
-
-            class HeroValue:
-                @property
-                def value(self):
-                    for cb in hero_checkboxes:
-                        if cb.value:
-                            return cb.text
-                    return None
-                @value.setter
-                def value(self, v):
-                    for cb in hero_checkboxes:
-                        cb.value = (cb.text == v)
-
-            hero = HeroValue()
+            hero = ui.radio(hero_options, value=None).classes('w-full').props('inline')
 
             wins = ui.slider(min=0, max=10, step=1, value=0).classes('w-full')
             wins_label = ui.label(f"Wins: {wins.value}")
@@ -598,6 +472,7 @@ async def index(request: Request, season_id: str = None):
         with ui.column().classes('flex-1'):
             await list_of_games(session=current_session, season=season.value)
 
+
     # automatically refresh the user's data when any run is created or deleted
     # store the current version for this client in the request context
     context.session_version = game_data_version
@@ -608,6 +483,7 @@ async def index(request: Request, season_id: str = None):
         if getattr(context, 'session_version', 0) != game_data_version:
             context.session_version = game_data_version
             list_of_games.refresh(session=request.session, season=season.value)
+
 
 
     ui.timer(1.0, refresh_if_needed)
