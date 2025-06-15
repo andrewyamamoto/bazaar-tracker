@@ -43,6 +43,24 @@ def mark_games_changed():
     game_data_version += 1
 
 
+async def delete_game_by_id(game_id: int) -> bool:
+    """Delete a game for the current user by id.
+
+    Returns ``True`` on success and ``False`` if the user is not
+    authenticated or the game does not belong to them.
+    """
+    user = await get_current_user()
+    if not user:
+        ui.notify('Unauthorized', color='negative')
+        return False
+    game = await models.Game.get_or_none(id=game_id, player=user.id)
+    if not game:
+        ui.notify('Unauthorized', color='negative')
+        return False
+    await game.delete()
+    return True
+
+
 async def init_db():
     # db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@db-postgresql-sfo2-10284-do-user-282100-0.m.db.ondigitalocean.com:25060/bazaar"
     db_url = f"postgres://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
@@ -187,12 +205,9 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
     context.season = season if season is not None else getattr(context, 'season', 0)
     async def delete_game(game_id: int) -> None:
         # ensure that the game belongs to the current user before deleting
-        user = await get_current_user()
-        game = await models.Game.get_or_none(id=game_id, player=user.id)
-        if not game:
-            ui.notify('Unauthorized', color='negative')
+        success = await delete_game_by_id(game_id)
+        if not success:
             return
-        await game.delete()
         mark_games_changed()
         list_of_games.refresh(page_number=page_number, session=context.session, season=context.season)
 
