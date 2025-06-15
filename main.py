@@ -431,6 +431,7 @@ async def index(request: Request, season_id: str = None):
 
         async def get_heroes():
             heroes = await models.Game.filter(player_id=user.id, season=season.value).distinct().values_list("hero", flat=True)
+
             return [h.lower().capitalize() for h in heroes]
 
         def categorize(game):
