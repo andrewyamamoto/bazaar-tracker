@@ -368,12 +368,13 @@ async def index(request: Request, season_id: str = None):
             await add_row(game)
 
         pagination_row.clear()
-        with pagination_row:
-            if current_page > 1:
-                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=current_page - 1))
-            page_label = ui.label(f'Page {current_page} of {total_pages}').classes('mt-2')
-            if current_page < total_pages:
-                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=current_page + 1))
+        if games:
+            with pagination_row:
+                if current_page > 1:
+                    ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=current_page - 1))
+                page_label = ui.label(f'Page {current_page} of {total_pages}').classes('mt-2')
+                if current_page < total_pages:
+                    ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=current_page + 1))
 
     async def delete_game(game_id: int) -> None:
         success = await delete_game_by_id(game_id)
@@ -585,7 +586,8 @@ async def index(request: Request, season_id: str = None):
             games_container = ui.column().classes('w-full')
             pagination_row = ui.row().classes('justify-center mt-4')
             await list_of_games()
-            await stats_tables()
+            if games:
+                await stats_tables()
 
     # automatically refresh the user's data when any run is created or deleted
     session_version = game_data_version.get(user.id, 0)
