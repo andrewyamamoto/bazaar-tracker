@@ -286,7 +286,7 @@ async def index(request: Request, season_id: str = None):
             if not success:
                 return
             nonlocal session_version
-            await list_of_games.refresh(page_number=current_page)
+            list_of_games.refresh(page_number=current_page)
             mark_games_changed(user.id)
             session_version = game_data_version.get(user.id, 0)
 
@@ -461,33 +461,36 @@ async def index(request: Request, season_id: str = None):
 
     async def create() -> None:
         """Create a game entry and refresh without flicker."""
+        add_run_btn.props('disable')
+        try:
+            await models.Game.create(
+                player=player.value,
+                season=season.value or 0,
+                ranked=ranked.value,
+                hero=hero.value,
+                wins=wins.value,
+                finished=finished.value,
+                media=media.value,
+                upload=state.uploaded_url,
+                notes=notes.value,
+            )
 
-        await models.Game.create(
-            player=player.value,
-            season=season.value or 0,
-            ranked=ranked.value,
-            hero=hero.value,
-            wins=wins.value,
-            finished=finished.value,
-            media=media.value,
-            upload=state.uploaded_url,
-            notes=notes.value,
-        )
+            nonlocal session_version
+            list_of_games.refresh()
+            mark_games_changed(user.id)
+            session_version = game_data_version.get(user.id, 0)
 
-        nonlocal session_version
-        await list_of_games.refresh()
-        mark_games_changed(user.id)
-        session_version = game_data_version.get(user.id, 0)
-
-        ranked.value = False
-        hero.value = None
-        wins.value = 0
-        finished.value = 0
-        media.value = ''
-        notes.value = ''
-        state.uploaded_url = ''
-        upload_component.reset()
-        ui.notify('Run added!')
+            ranked.value = False
+            hero.value = None
+            wins.value = 0
+            finished.value = 0
+            media.value = ''
+            notes.value = ''
+            state.uploaded_url = ''
+            upload_component.reset()
+            ui.notify('Run added!')
+        finally:
+            add_run_btn.props(remove='disable')
     
     with ui.column().classes('w-full'):
         ui.label('Bazaar Tracker').classes('text-3xl font-bold')
@@ -571,7 +574,7 @@ async def index(request: Request, season_id: str = None):
                 char_count_label.text = f'{len(value)}/{MAX_NOTES_LENGTH}'
 
             ui.timer(0.25, update_char_count)
-            ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
+            add_run_btn = ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
 
         with ui.column().classes('flex-1'):
             await list_of_games()
