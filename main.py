@@ -118,7 +118,7 @@ async def api_login(request: Request):
     user = await authenticate(username, password)
     if user:
         request.session['user_id'] = user.id
-        latest_game = await models.Game.filter(player=user.id).order_by('-season').first()
+        latest_game = await models.Game.filter(player_id=user.id).order_by('-season').first()
         latest_season = latest_game.season if latest_game else 3
         return {'success': True, 'redirect': f'/dashboard/{latest_season}'}
     return {'success': False, 'error': 'Invalid email or password.'}
@@ -188,7 +188,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
     async def delete_game(game_id: int) -> None:
         # ensure that the game belongs to the current user before deleting
         user = await get_current_user()
-        game = await models.Game.get_or_none(id=game_id, player=user.id)
+        game = await models.Game.get_or_none(id=game_id, player_id=user.id)
         if not game:
             ui.notify('Unauthorized', color='negative')
             return
@@ -204,8 +204,8 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
 
     season = context.season
 
-    total_games = await models.Game.filter(player=user.id, season=season).count()
-    games = await models.Game.filter(player=user.id, season=season)\
+    total_games = await models.Game.filter(player_id=user.id, season=season).count()
+    games = await models.Game.filter(player_id=user.id, season=season)\
         .order_by('-played')\
         .offset((page_number - 1) * page_size)\
         .limit(page_size)\
@@ -276,7 +276,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
     # Placement tally chart for each hero
 
     # Fetch placement data for the current user and season
-    games_for_chart = await models.Game.filter(player=user.id, season=season).all()
+    games_for_chart = await models.Game.filter(player_id=user.id, season=season).all()
 
     # Prepare data: {hero: [count of 0 wins, 1 win, ..., 10 wins]}
     hero_options = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
