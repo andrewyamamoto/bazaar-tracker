@@ -281,11 +281,14 @@ async def index(request: Request, season_id: str = None):
         current_page = page_number
 
         async def delete_game(game_id: int) -> None:
+            """Delete the given game and refresh the list in-place."""
             success = await delete_game_by_id(game_id)
             if not success:
                 return
+            nonlocal session_version
+            await list_of_games.refresh(page_number=current_page)
             mark_games_changed(user.id)
-            list_of_games.refresh(page_number=current_page)
+            session_version = game_data_version.get(user.id, 0)
 
         user_local = await get_current_user()
         if not user_local:
@@ -457,6 +460,7 @@ async def index(request: Request, season_id: str = None):
                         pass
 
     async def create() -> None:
+        """Create a game entry and refresh without flicker."""
 
         await models.Game.create(
             player=player.value,
@@ -469,8 +473,12 @@ async def index(request: Request, season_id: str = None):
             upload=state.uploaded_url,
             notes=notes.value,
         )
-        # notify the current user's session that their game data changed
+
+        nonlocal session_version
+        await list_of_games.refresh()
         mark_games_changed(user.id)
+        session_version = game_data_version.get(user.id, 0)
+
         ranked.value = False
         hero.value = None
         wins.value = 0
@@ -479,7 +487,6 @@ async def index(request: Request, season_id: str = None):
         notes.value = ''
         state.uploaded_url = ''
         upload_component.reset()
-        list_of_games.refresh()
         ui.notify('Run added!')
     
     with ui.column().classes('w-full'):
