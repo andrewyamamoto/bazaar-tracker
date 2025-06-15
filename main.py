@@ -584,7 +584,7 @@ async def index(request: Request, season_id: str = None):
 
         with ui.column().classes('flex-1'):
             games_container = ui.column().classes('w-full')
-            pagination_row = ui.row().classes('justify-center mt-4')
+            pagination_row = ui.row().classes('justify-end mt-4')
             await list_of_games()
             if games:
                 await stats_tables()
