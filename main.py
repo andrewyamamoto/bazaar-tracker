@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import bcrypt
 import boto3
 import hashlib
@@ -205,6 +207,7 @@ async def logout_page(request: Request):
 async def index(request: Request, season_id: str = None):
 
     context.session = request.session
+    current_session = request.session
     
     ui.page_title("Bazaar Tracker")
     season_source = season_id or context.query.get('season', '0')
