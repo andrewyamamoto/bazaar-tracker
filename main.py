@@ -240,6 +240,15 @@ async def index(request: Request, season_id: str = None):
         
     ui.button('Log Out', on_click=lambda: ui.navigate.to('/logout')).classes('absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded')
     state = SimpleNamespace(uploaded_url='')
+
+    current_page = 1
+    page_size = 8
+    game_rows = {}
+    games_container = None
+    pagination_row = None
+    page_label = None
+    prev_button = None
+    next_button = None
     
     async def handle_upload(e):
 
@@ -275,197 +284,112 @@ async def index(request: Request, season_id: str = None):
             print('Upload exception:', ex)
             ui.notify('Unexpected error during upload', color='negative')
 
-    @ui.refreshable
-    async def list_of_games(page_number=1, page_size=8) -> None:
+    grid_style = (
+        'display: grid; '
+        'grid-template-columns: repeat(9, minmax(100px, 1fr)); '
+        'gap: 0.5rem; align-items: center; width: 100%;'
+    )
+
+    async def add_row(game) -> None:
+        username = game.player.username
+        placement_color = (
+            "text-white" if game.wins == 10 and game.finished == 10 else
+            "text-yellow-400" if game.wins == 10 and game.finished > 10 else
+            "text-gray-400" if game.wins >= 7 else
+            "text-[#cd7f32]" if game.wins >= 4 else
+            "text-gray-500"
+        )
+        hero_colors = {
+            'Dooley': 'bg-[#397d83] text-white',
+            'Mak': 'bg-[#2da337] text-white',
+            'Pygmalien': 'bg-[#f56a1f] text-white',
+            'Vanessa': 'bg-[#6312de] text-white',
+        }
+        hero_class = hero_colors.get(game.hero.lower().capitalize(), 'bg-gray-200 text-gray-900')
+
+        with games_container:
+            with ui.element('div').style(grid_style) as row:
+                ui.label(username).classes('truncate text-center')
+                ui.label(game.hero).classes(
+                    f'truncate rounded-full px-3 py-1 {hero_class} text-sm font-semibold shadow text-center'
+                )
+                ui.label("Ranked" if game.ranked else "Non-Ranked").classes('truncate text-center')
+                ui.label("Perfect Game" if game.wins == 10 and game.finished == 10 else f"{game.wins}/{game.finished}").classes(
+                    f'truncate {placement_color} text-center')
+                ui.link('View', target=game.media, new_tab=True).classes('text-blue-600 underline text-center') if game.media else ui.label('-').classes('truncate text-center text-gray-500')
+
+                with ui.dialog().props('maximized') as dialog, ui.card().classes('w-full h-full'):
+                    ui.image(game.upload).props('fit=none').classes('mb-4')
+                    ui.button('Close', on_click=dialog.close).classes('mt-2')
+
+                ui.link('View').on('click', lambda d=dialog: d.open()).classes('text-blue-600 underline text-center') if game.upload else ui.label('No Upload').classes('truncate text-gray-500 text-center')
+
+                ui.label(game.notes or '').classes('truncate text-center')
+                played_str = game.played.strftime('%Y-%m-%d %I:%M %p') if game.played else ''
+                ui.label(played_str).classes('truncate text-center')
+                ui.button(icon="delete", on_click=lambda g=game.id: delete_game(g)).props('color=negative flat')
+            ui.separator().classes('col-span-9 my-1')
+        game_rows[game.id] = row
+
+    async def load_page(page_number=1):
+        nonlocal current_page, page_label
         context.session = request.session
         context.season = season.value
-        current_page = page_number
-
-        async def delete_game(game_id: int) -> None:
-            """Delete the given game and refresh the list in-place."""
-            success = await delete_game_by_id(game_id)
-            if not success:
-                return
-            nonlocal session_version, current_page
-            total_games_after = await models.Game.filter(player_id=user.id, season=current_season).count()
-            total_pages_after = max((total_games_after + page_size - 1) // page_size, 1)
-            if current_page > total_pages_after:
-                current_page = total_pages_after
-            list_of_games.refresh(page_number=current_page)
-            mark_games_changed(user.id)
-            session_version = game_data_version.get(user.id, 0)
-
         user_local = await get_current_user()
         if not user_local:
-            ui.label('Not logged in').classes('text-red-500')
+            ui.notify('Not logged in', color='negative')
             ui.navigate.to('/')
             return
 
+        current_page = page_number
         current_season = context.season
 
         total_games = await models.Game.filter(player_id=user_local.id, season=current_season).count()
         total_pages = max((total_games + page_size - 1) // page_size, 1)
-        if page_number > total_pages:
-            list_of_games.refresh(page_number=total_pages)
-            return
+        if current_page > total_pages:
+            current_page = total_pages
 
         games = await models.Game.filter(player_id=user_local.id, season=current_season)\
             .order_by('-played')\
-            .offset((page_number - 1) * page_size)\
+            .offset((current_page - 1) * page_size)\
             .limit(page_size)\
             .prefetch_related('player')
 
-        grid_style = (
-            'display: grid; '
-            'grid-template-columns: repeat(9, minmax(100px, 1fr)); '
-            'gap: 0.5rem; align-items: center; width: 100%;'
-        )
+        games_container.clear()
+        game_rows.clear()
 
-        with ui.column().classes('w-full'):
-            if games:
+        if games:
+            with games_container:
                 with ui.element('div').style(grid_style).classes('font-bold'):
                     for header in ['Player', 'Hero', 'Mode', 'Win/Day', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
                         ui.label(header).classes('truncate text-center')
+        for game in games:
+            await add_row(game)
 
-            for game in games:
-                username = game.player.username
-                placement_color = (
-                    "text-white" if game.wins == 10 and game.finished == 10 else
-                    "text-yellow-400" if game.wins == 10 and game.finished > 10 else
-                    "text-gray-400" if game.wins >= 7 else
-                    "text-[#cd7f32]" if game.wins >= 4 else
-                    "text-gray-500"
-                )
-                hero_colors = {
-                    'Dooley': 'bg-[#397d83] text-white',
-                    'Mak': 'bg-[#2da337] text-white',
-                    'Pygmalien': 'bg-[#f56a1f] text-white',
-                    'Vanessa': 'bg-[#6312de] text-white',
-                }
-                hero_class = hero_colors.get(game.hero.lower().capitalize(), 'bg-gray-200 text-gray-900')
+        pagination_row.clear()
+        with pagination_row:
+            if current_page > 1:
+                ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=current_page - 1))
+            page_label = ui.label(f'Page {current_page} of {total_pages}').classes('mt-2')
+            if current_page < total_pages:
+                ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=current_page + 1))
 
-                with ui.element('div').style(grid_style):
-                    ui.label(username).classes('truncate text-center')
-                    ui.label(game.hero).classes(
-                        f'truncate rounded-full px-3 py-1 {hero_class} text-sm font-semibold shadow text-center'
-                    )
-                    ui.label("Ranked" if game.ranked else "Non-Ranked").classes('truncate text-center')
-                    ui.label("Perfect Game" if game.wins == 10 and game.finished == 10 else f"{game.wins}/{game.finished}").classes(
-                        f'truncate {placement_color} text-center')
-                    ui.link('View', target=game.media, new_tab=True).classes('text-blue-600 underline text-center') if game.media else ui.label('-').classes('truncate text-center text-gray-500')
+    async def delete_game(game_id: int) -> None:
+        success = await delete_game_by_id(game_id)
+        if not success:
+            return
+        row = game_rows.pop(game_id, None)
+        if row:
+            row.delete()
+        await load_page(current_page)
+        nonlocal session_version
+        mark_games_changed(user.id)
+        session_version = game_data_version.get(user.id, 0)
 
-                    with ui.dialog().props('maximized') as dialog, ui.card().classes('w-full h-full'):
-                        ui.image(game.upload).props('fit=none').classes('mb-4')
-                        ui.button('Close', on_click=dialog.close).classes('mt-2')
+    @ui.refreshable
+    async def list_of_games(page_number=1, page_size=page_size) -> None:
+        await load_page(page_number)
 
-                    ui.link('View').on('click', lambda d=dialog: d.open()).classes('text-blue-600 underline text-center') if game.upload else ui.label('No Upload').classes('truncate text-gray-500 text-center')
-
-                    ui.label(game.notes or '').classes('truncate text-center')
-                    played_str = game.played.strftime('%Y-%m-%d %I:%M %p') if game.played else ''
-                    ui.label(played_str).classes('truncate text-center')
-                    ui.button(icon="delete", on_click=lambda g=game.id: delete_game(g)).props('color=negative flat')
-                    ui.separator().classes('col-span-9 my-1')
-
-            if games:
-                with ui.row().classes('justify-center mt-4'):
-                    if page_number > 1:
-                        ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1))
-                    ui.label(f'Page {page_number} of {total_pages}').classes('mt-2')
-                    if page_number < total_pages:
-                        ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1))
-
-        games_for_chart = await models.Game.filter(player_id=user_local.id, season=current_season).all()
-
-        hero_options = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
-        placement_counts = {hero: [0]*11 for hero in hero_options}
-
-        for game in games_for_chart:
-            hero = game.hero.lower().capitalize()
-            if hero in placement_counts and 0 <= game.wins <= 10:
-                placement_counts[hero][game.wins] += 1
-
-        labels = [str(i) for i in range(11)]
-        datasets = [
-            {
-                "label": hero,
-                "data": placement_counts[hero],
-            }
-            for hero in hero_options
-        ]
-        ui.label('Game Stats').classes('font-bold text-2xl mb-2 text-grey-200 w-full mt-2').style('border-top: 2px solid #444; padding-top: 1rem;')
-        with ui.row().classes('w-full mb-4 gap-4 flex flex-wrap items-start'):
-            with ui.card().classes('w-full sm:w-[48%] min-w-[300px]'):
-
-                placement_categories = ['No Placement', 'Bronze', 'Silver', 'Gold', 'Perfect']
-                placement_counts_by_category = {hero: [0, 0, 0, 0, 0] for hero in hero_options}
-
-                for game in games_for_chart:
-                    if not game.ranked:
-                        continue
-                    hero = game.hero.lower().capitalize()
-                    if hero not in placement_counts_by_category:
-                        continue
-                    if game.wins == 10 and game.finished == 10:
-                        placement_counts_by_category[hero][4] += 1
-                    elif 8 <= game.wins <= 10 and game.finished > 10:
-                        placement_counts_by_category[hero][3] += 1
-                    elif 4 <= game.wins <= 7:
-                        placement_counts_by_category[hero][2] += 1
-                    elif 1 <= game.wins <= 3:
-                        placement_counts_by_category[hero][1] += 1
-                    else:
-                        placement_counts_by_category[hero][0] += 1
-
-                columns = [
-                    {"name": "placement", "label": "Placement", "field": "placement", "align": "left"},
-                ] + [
-                    {"name": hero, "label": hero, "field": hero, "align": "center"}
-                    for hero in hero_options
-                ]
-                rows = []
-                for idx, category in enumerate(placement_categories):
-                    row = {"placement": category}
-                    for hero in hero_options:
-                        row[hero] = placement_counts_by_category[hero][idx]
-                    rows.append(row)
-
-                ui.label('Ranked Placement').classes('font-bold mb-2')
-                with ui.element('div').classes('overflow-x-auto w-full'):
-                    with ui.table(columns=columns, rows=rows).classes('w-full text-center rounded-lg border border-gray-700'):
-                        pass
-
-            with ui.card().classes('w-full sm:w-[48%] min-w-[300px]'):
-
-                unranked_counts_by_category = {hero: [0, 0, 0, 0, 0] for hero in hero_options}
-
-                for game in games_for_chart:
-                    if game.ranked:
-                        continue
-                    hero = game.hero.lower().capitalize()
-                    if hero not in unranked_counts_by_category:
-                        continue
-                    if game.wins == 10 and game.finished == 10:
-                        unranked_counts_by_category[hero][4] += 1
-                    elif 8 <= game.wins <= 10 and game.finished > 10:
-                        unranked_counts_by_category[hero][3] += 1
-                    elif 4 <= game.wins <= 7:
-                        unranked_counts_by_category[hero][2] += 1
-                    elif 1 <= game.wins <= 3:
-                        unranked_counts_by_category[hero][1] += 1
-                    else:
-                        unranked_counts_by_category[hero][0] += 1
-
-                unranked_rows = []
-                for idx, category in enumerate(placement_categories):
-                    row = {"placement": category}
-                    for hero in hero_options:
-                        row[hero] = unranked_counts_by_category[hero][idx]
-                    unranked_rows.append(row)
-
-                ui.label('Unranked Placement').classes('font-bold mb-2')
-                with ui.element('div').classes('overflow-x-auto w-full'):
-                    with ui.table(columns=columns, rows=unranked_rows).classes('w-full text-center rounded-lg border border-gray-700'):
-                        pass
 
     async def create() -> None:
         """Create a game entry and refresh without flicker."""
@@ -484,7 +408,7 @@ async def index(request: Request, season_id: str = None):
             )
 
             nonlocal session_version
-            list_of_games.refresh()
+            await load_page(current_page)
             mark_games_changed(user.id)
             session_version = game_data_version.get(user.id, 0)
 
@@ -586,6 +510,8 @@ async def index(request: Request, season_id: str = None):
             add_run_btn = ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
 
         with ui.column().classes('flex-1'):
+            games_container = ui.column().classes('w-full')
+            pagination_row = ui.row().classes('justify-center mt-4')
             await list_of_games()
 
     # automatically refresh the user's data when any run is created or deleted
@@ -596,7 +522,7 @@ async def index(request: Request, season_id: str = None):
         current_version = game_data_version.get(user.id, 0)
         if session_version != current_version:
             session_version = current_version
-            list_of_games.refresh()
+            ui.run_async(load_page(current_page))
 
     ui.timer(1.0, refresh_if_needed)
 
