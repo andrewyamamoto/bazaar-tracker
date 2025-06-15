@@ -491,6 +491,7 @@ async def index(request: Request, season_id: str = None):
             ui.notify('Run added!')
         finally:
             add_run_btn.props(remove='disable')
+
     
     with ui.column().classes('w-full'):
         ui.label('Bazaar Tracker').classes('text-3xl font-bold')
