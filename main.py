@@ -11,6 +11,7 @@ import time
 import uvicorn
 
 from dotenv import load_dotenv
+from contextvars import ContextVar
 from nicegui import app, ui, context
 from fastapi import Request
 from starlette.middleware.sessions import SessionMiddleware
@@ -36,6 +37,10 @@ SESSION_SECRET = os.getenv('SESSION_SECRET')
 
 # version counter for game data; increment whenever a run is added or deleted
 game_data_version = 0
+
+# context variables for the current session and season
+current_session: ContextVar[dict | None] = ContextVar('current_session', default=None)
+current_season: ContextVar[int] = ContextVar('current_season', default=0)
 
 def mark_games_changed():
     """Increase the global game data version to notify all sessions."""
@@ -95,10 +100,10 @@ async def create_user(username, password):
     return True, "User created successfully."
 
 async def get_current_user():
-    session = getattr(context, 'session', None)
+    session = current_session.get(None)
     if not session:
         return None
-    user_id = session.get('user_id')
+    user_id = session.get('user_id') if session else None
     if not user_id:
         return None
     user = await models.Users.get_or_none(id=user_id)
@@ -138,7 +143,7 @@ async def api_logout(request: Request):
 
 @ui.page('/')
 def login_page(request: Request):
-    context.session = request.session
+    current_session.set(request.session)
     ui.page_title("Bazaar Tracker")
     ui.label('Login').classes('text-3xl font-bold mb-4')
     email = ui.input('Username').props('type=text').classes('w-full max-w-sm')
@@ -177,14 +182,15 @@ def login_page(request: Request):
 
 @ui.page('/logout')
 async def logout_page(request: Request):
-    context.session = request.session
-    context.session.clear()
+    current_session.set(request.session)
+    session = current_session.get()
+    session.clear()
     ui.navigate.to('/')
 
 @ui.refreshable
 async def list_of_games(page_number=1, page_size=8, session=None, season=None) -> None:
-    context.session = session or getattr(context, 'session', None)
-    context.season = season if season is not None else getattr(context, 'season', 0)
+    current_session.set(session or current_session.get(None))
+    current_season.set(season if season is not None else current_season.get(0))
     async def delete_game(game_id: int) -> None:
         # ensure that the game belongs to the current user before deleting
         user = await get_current_user()
@@ -194,7 +200,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
             return
         await game.delete()
         mark_games_changed()
-        list_of_games.refresh(page_number=page_number, session=context.session, season=context.season)
+        list_of_games.refresh(page_number=page_number, session=current_session.get(None), season=current_season.get(0))
 
     user = await get_current_user()
     if not user:
@@ -202,7 +208,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
         ui.navigate.to('/')
         return
 
-    season = context.season
+    season = current_season.get(0)
 
     total_games = await models.Game.filter(player=user.id, season=season).count()
     games = await models.Game.filter(player=user.id, season=season)\
@@ -268,10 +274,10 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
         if games:
             with ui.row().classes('justify-center mt-4'):
                 if page_number > 1:
-                    ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=context.session, season=context.season))
+                    ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=current_session.get(None), season=current_season.get(0)))
                 ui.label(f'Page {page_number} of {total_pages}').classes('mt-2')
                 if page_number < total_pages:
-                    ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=context.session, season=context.season))
+                    ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=current_session.get(None), season=current_season.get(0)))
     
     # Placement tally chart for each hero
 
@@ -381,7 +387,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
 @ui.page('/dashboard/{season_id}')
 async def index(request: Request, season_id: str = None):
 
-    context.session = request.session
+    current_session.set(request.session)
     
     ui.page_title("Bazaar Tracker")
     season_source = season_id or context.query.get('season', '0')
@@ -404,12 +410,12 @@ async def index(request: Request, season_id: str = None):
             self._value = v
 
     season = SeasonValue(default_season)
-    context.season = season.value
+    current_season.set(season.value)
 
     user = await get_current_user()
     if DEV_MODE and not user:
         user, _ = await models.Users.get_or_create(id=1, defaults={'username': 'devuser', 'password': 'placeholder'})
-        context.session['user_id'] = user.id
+        current_session.get()['user_id'] = user.id
     if not user:
         ui.navigate.to('/')
         return
@@ -475,7 +481,7 @@ async def index(request: Request, season_id: str = None):
         notes.value = ''
         state.uploaded_url = ''
         upload_component.reset()
-        list_of_games.refresh(session=context.session, season=context.season)
+        list_of_games.refresh(session=current_session.get(None), season=current_season.get(0))
         ui.notify('Run added!')
     
     with ui.column().classes('w-full'):
