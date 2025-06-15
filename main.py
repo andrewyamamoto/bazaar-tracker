@@ -199,8 +199,6 @@ async def logout_page(request: Request):
     context.session.clear()
     ui.navigate.to('/')
 
-        
-
 @ui.page('/dashboard/{season_id}')
 async def index(request: Request, season_id: str = None):
 
@@ -586,8 +584,7 @@ async def index(request: Request, season_id: str = None):
             games_container = ui.column().classes('w-full')
             pagination_row = ui.row().classes('justify-end mt-4')
             await list_of_games()
-            if games:
-                await stats_tables()
+            await stats_tables()
 
     # automatically refresh the user's data when any run is created or deleted
     session_version = game_data_version.get(user.id, 0)
