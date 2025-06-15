@@ -203,6 +203,8 @@ async def logout_page(request: Request):
 async def list_of_games(page_number=1, page_size=8, session=None, season=None) -> None:
     context.session = session or getattr(context, 'session', None)
     context.season = season if season is not None else getattr(context, 'season', 0)
+    current_session = context.session
+    current_season = context.season
     async def delete_game(game_id: int) -> None:
         # ensure that the game belongs to the current user before deleting
         success = await delete_game_by_id(game_id)
@@ -210,7 +212,7 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
 
             return
         mark_games_changed()
-        list_of_games.refresh(page_number=page_number, session=context.session, season=context.season)
+        list_of_games.refresh(page_number=page_number, session=current_session, season=current_season)
 
     user = await get_current_user()
     if not user:
@@ -284,10 +286,10 @@ async def list_of_games(page_number=1, page_size=8, session=None, season=None) -
         if games:
             with ui.row().classes('justify-center mt-4'):
                 if page_number > 1:
-                    ui.button('Previous', on_click=lambda: list_of_games.refresh(page_number=page_number - 1, session=context.session, season=context.season))
+                    ui.button('Previous', on_click=lambda s=current_session, se=current_season: list_of_games.refresh(page_number=page_number - 1, session=s, season=se))
                 ui.label(f'Page {page_number} of {total_pages}').classes('mt-2')
                 if page_number < total_pages:
-                    ui.button('Next', on_click=lambda: list_of_games.refresh(page_number=page_number + 1, session=context.session, season=context.season))
+                    ui.button('Next', on_click=lambda s=current_session, se=current_season: list_of_games.refresh(page_number=page_number + 1, session=s, season=se))
     
     # Placement tally chart for each hero
 
@@ -491,7 +493,7 @@ async def index(request: Request, season_id: str = None):
         notes.value = ''
         state.uploaded_url = ''
         upload_component.reset()
-        list_of_games.refresh(session=context.session, season=context.season)
+        list_of_games.refresh(session=request.session, season=season.value)
         ui.notify('Run added!')
     
     with ui.column().classes('w-full'):
