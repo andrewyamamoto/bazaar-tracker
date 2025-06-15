@@ -285,7 +285,11 @@ async def index(request: Request, season_id: str = None):
             success = await delete_game_by_id(game_id)
             if not success:
                 return
-            nonlocal session_version
+            nonlocal session_version, current_page
+            total_games_after = await models.Game.filter(player_id=user.id, season=current_season).count()
+            total_pages_after = max((total_games_after + page_size - 1) // page_size, 1)
+            if current_page > total_pages_after:
+                current_page = total_pages_after
             list_of_games.refresh(page_number=current_page)
             mark_games_changed(user.id)
             session_version = game_data_version.get(user.id, 0)
@@ -299,13 +303,16 @@ async def index(request: Request, season_id: str = None):
         current_season = context.season
 
         total_games = await models.Game.filter(player_id=user_local.id, season=current_season).count()
+        total_pages = max((total_games + page_size - 1) // page_size, 1)
+        if page_number > total_pages:
+            list_of_games.refresh(page_number=total_pages)
+            return
+
         games = await models.Game.filter(player_id=user_local.id, season=current_season)\
             .order_by('-played')\
             .offset((page_number - 1) * page_size)\
             .limit(page_size)\
             .prefetch_related('player')
-
-        total_pages = max((total_games + page_size - 1) // page_size, 1)
 
         grid_style = (
             'display: grid; '
