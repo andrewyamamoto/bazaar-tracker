@@ -533,9 +533,21 @@ async def index(request: Request, season_id: str = None):
                 unranked_rows.append(totals)
             categories_p, percentages = await compute_placement_percentages(user.id, season.value)
             chart_options = {
-                "xAxis": {"type": "category", "data": categories_p},
-                "yAxis": {"type": "value", "max": 100},
-                "series": [{"type": "bar", "data": percentages}],
+                "tooltip": {"trigger": "item"},
+                "legend": {"top": "5%", "left": "center"},
+                "series": [
+                    {
+                        "name": "Placement",
+                        "type": "pie",
+                        "radius": ["40%", "70%"],
+                        "avoidLabelOverlap": False,
+                        "data": [
+                            {"value": p, "name": c}
+                            for c, p in zip(categories_p, percentages)
+                        ],
+                    }
+                ],
+
             }
 
             with stats_container:
