@@ -247,6 +247,7 @@ async def index(request: Request, season_id: str = None):
     page_size = 8
     game_rows = {}
     games_container = None
+    stats_container = None
     pagination_row = None
     page_label = None
     prev_button = None
@@ -466,6 +467,12 @@ async def index(request: Request, season_id: str = None):
 
         @ui.refreshable
         async def stats_tables():
+
+            stats_container.clear()
+            has_data = await models.Game.filter(player_id=user.id, season=season.value).exists()
+            if not has_data:
+                return
+
             ranked_heroes, ranked_stats = await collect_stats(True)
             unranked_heroes, unranked_stats = await collect_stats(False)
 
@@ -496,13 +503,28 @@ async def index(request: Request, season_id: str = None):
                  "Perfect Game": unranked_stats[h]['Perfect Game']} for h in unranked_heroes
             ]
 
-            with ui.row().classes('w-full gap-4'):
-                with ui.column().classes('flex-1'):
-                    ui.label('Ranked Game Stats').classes('text-lg')
-                    ui.table(columns=columns, rows=ranked_rows).classes('w-full')
-                with ui.column().classes('flex-1'):
-                    ui.label('Non-Ranked Game Stats').classes('text-lg')
-                    ui.table(columns=columns, rows=unranked_rows).classes('w-full')
+            categories = ["No Placement", "3rd", "2nd", "1st", "Perfect Game"]
+
+            if ranked_rows:
+                totals = {"hero": "Total"}
+                for cat in categories:
+                    totals[cat] = sum(r[cat] for r in ranked_rows)
+                ranked_rows.append(totals)
+
+            if unranked_rows:
+                totals = {"hero": "Total"}
+                for cat in categories:
+                    totals[cat] = sum(r[cat] for r in unranked_rows)
+                unranked_rows.append(totals)
+
+            with stats_container:
+                with ui.row().classes('w-full gap-4'):
+                    with ui.column().classes('flex-1'):
+                        ui.label('Ranked Game Stats').classes('text-lg')
+                        ui.table(columns=columns, rows=ranked_rows).classes('w-full')
+                    with ui.column().classes('flex-1'):
+                        ui.label('Non-Ranked Game Stats').classes('text-lg')
+                        ui.table(columns=columns, rows=unranked_rows).classes('w-full')
         
     with ui.row().classes('flex w-full gap-4'):
 
@@ -585,7 +607,8 @@ async def index(request: Request, season_id: str = None):
 
         with ui.column().classes('flex-1'):
             games_container = ui.column().classes('w-full')
-            pagination_row = ui.row().classes('justify-end mt-4')
+            pagination_row = ui.row().classes('w-full justify-end mt-4')
+            stats_container = ui.column().classes('w-full')
             await list_of_games()
             await stats_tables()
 
