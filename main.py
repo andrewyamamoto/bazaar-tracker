@@ -547,6 +547,7 @@ async def index(request: Request, season_id: str = None):
                         ],
                     }
                 ],
+
             }
 
             with stats_container:
