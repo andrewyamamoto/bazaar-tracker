@@ -37,6 +37,9 @@ SESSION_SECRET = os.getenv('SESSION_SECRET')
 # per-user version counters for game data; increment whenever a run is added or deleted
 game_data_version = {}
 
+# colors for pie charts that show up well in dark mode
+DARK_MODE_COLORS = ['#6b7280', '#f97316', '#eab308', '#34d399', '#8b5cf6']
+
 def mark_games_changed(user_id: int) -> None:
     """Increase the game data version for the specified user."""
     game_data_version[user_id] = game_data_version.get(user_id, 0) + 1
@@ -535,6 +538,7 @@ async def index(request: Request, season_id: str = None):
             chart_options = {
                 "tooltip": {"trigger": "item"},
                 "legend": {"top": "center", "left": "left", "orient": "vertical"},
+                "color": DARK_MODE_COLORS,
 
                 "series": [
                     {
