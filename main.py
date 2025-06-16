@@ -500,6 +500,20 @@ async def index(request: Request, season_id: str = None):
                  "Perfect Game": unranked_stats[h]['Perfect Game']} for h in unranked_heroes
             ]
 
+            categories = ["No Placement", "3rd", "2nd", "1st", "Perfect Game"]
+
+            if ranked_rows:
+                totals = {"hero": "Total"}
+                for cat in categories:
+                    totals[cat] = sum(r[cat] for r in ranked_rows)
+                ranked_rows.append(totals)
+
+            if unranked_rows:
+                totals = {"hero": "Total"}
+                for cat in categories:
+                    totals[cat] = sum(r[cat] for r in unranked_rows)
+                unranked_rows.append(totals)
+
             with stats_container:
                 with ui.row().classes('w-full gap-4'):
                     with ui.column().classes('flex-1'):
