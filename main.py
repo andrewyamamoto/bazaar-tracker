@@ -535,6 +535,7 @@ async def index(request: Request, season_id: str = None):
             chart_options = {
                 "tooltip": {"trigger": "item"},
                 "legend": {"top": "center", "left": "left", "orient": "vertical"},
+
                 "series": [
                     {
                         "name": "Placement",
@@ -546,12 +547,14 @@ async def index(request: Request, season_id: str = None):
                             "position": "outside",
                         },
                         "labelLine": {"show": True},
+
                         "data": [
                             {"value": p, "name": c}
                             for c, p in zip(categories_p, percentages)
                         ],
                     }
                 ],
+
             }
 
             with stats_container:
