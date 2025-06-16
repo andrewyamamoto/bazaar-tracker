@@ -42,6 +42,32 @@ def mark_games_changed(user_id: int) -> None:
     game_data_version[user_id] = game_data_version.get(user_id, 0) + 1
 
 
+def categorize_game(game):
+    """Return the placement category for a game."""
+    if game.wins == 10 and game.finished == 10:
+        return 'Perfect Game'
+    if game.wins == 10:
+        return '1st'
+    if game.wins >= 7:
+        return '2nd'
+    if game.wins >= 4:
+        return '3rd'
+    return 'No Placement'
+
+
+async def compute_placement_percentages(user_id: int, season: int):
+    """Compute percentage placement statistics for a user's season."""
+    categories = ["No Placement", "3rd", "2nd", "1st", "Perfect Game"]
+    totals = {c: 0 for c in categories}
+    games = await models.Game.filter(player_id=user_id, season=season)
+    for g in games:
+        cat = categorize_game(g)
+        totals[cat] += 1
+    total_games = sum(totals.values())
+    percentages = [round((totals[c] / total_games) * 100, 2) if total_games else 0.0 for c in categories]
+    return categories, percentages
+
+
 async def delete_game_by_id(game_id: int) -> bool:
     """Delete a game for the current user by id.
 
@@ -440,15 +466,7 @@ async def index(request: Request, season_id: str = None):
             return sorted(all_heroes)
 
         def categorize(game):
-            if game.wins == 10 and game.finished == 10:
-                return 'Perfect Game'
-            if game.wins == 10:
-                return '1st'
-            if game.wins >= 7:
-                return '2nd'
-            if game.wins >= 4:
-                return '3rd'
-            return 'No Placement'
+            return categorize_game(game)
 
         async def collect_stats(rank_value: bool):
             heroes = await get_heroes()
@@ -513,6 +531,12 @@ async def index(request: Request, season_id: str = None):
                 for cat in categories:
                     totals[cat] = sum(r[cat] for r in unranked_rows)
                 unranked_rows.append(totals)
+            categories_p, percentages = await compute_placement_percentages(user.id, season.value)
+            chart_options = {
+                "xAxis": {"type": "category", "data": categories_p},
+                "yAxis": {"type": "value", "max": 100},
+                "series": [{"type": "bar", "data": percentages}],
+            }
 
             with stats_container:
                 with ui.row().classes('w-full gap-4'):
@@ -522,6 +546,10 @@ async def index(request: Request, season_id: str = None):
                     with ui.column().classes('flex-1'):
                         ui.label('Non-Ranked Game Stats').classes('text-lg')
                         ui.table(columns=columns, rows=unranked_rows).classes('w-full')
+                with ui.row().classes('w-full mt-4'):
+                    with ui.column().classes('w-1/3'):
+                        ui.label('Placement Averages').classes('text-lg')
+                        ui.echart(options=chart_options).classes('w-full h-64')
         
     with ui.row().classes('flex w-full gap-4'):
 
