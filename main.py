@@ -545,6 +545,8 @@ async def index(request: Request, season_id: str = None):
                         "label": {
                             "formatter": "{b}: {d}%",
                             "position": "outside",
+                            "color": "#ffffff",
+                            "textBorderWidth": 0,
                         },
                         "labelLine": {"show": True},
 
