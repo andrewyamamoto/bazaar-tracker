@@ -534,13 +534,20 @@ async def index(request: Request, season_id: str = None):
             categories_p, percentages = await compute_placement_percentages(user.id, season.value)
             chart_options = {
                 "tooltip": {"trigger": "item"},
-                "legend": {"top": "5%", "left": "center"},
+                "legend": {"top": "center", "left": "left", "orient": "vertical"},
+
                 "series": [
                     {
                         "name": "Placement",
                         "type": "pie",
                         "radius": ["40%", "70%"],
-                        "avoidLabelOverlap": False,
+                        "avoidLabelOverlap": True,
+                        "label": {
+                            "formatter": "{b}: {d}%",
+                            "position": "outside",
+                        },
+                        "labelLine": {"show": True},
+
                         "data": [
                             {"value": p, "name": c}
                             for c, p in zip(categories_p, percentages)
