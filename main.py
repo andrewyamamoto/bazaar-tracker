@@ -718,7 +718,14 @@ async def index(request: Request, season_id: str = None):
 
                 player = PlayerValue()
             
-            
+            # Display the current patch version at the top of the form
+            async def get_current_patch_version():
+                # Example: fetch from a remote API or local file
+                # Here, we just return a hardcoded value for demonstration
+                return "1.0.0"
+
+            patch_version = await get_current_patch_version()
+            ui.label(f"Current Patch Version: {patch_version}").classes('text-sm text-gray-400 mb-2')
             with ui.row().classes('items-center gap-0'):
                 ranked = ui.checkbox()
                 ui.label('Ranked').bind_visibility_from(ranked, 'visible', lambda _: True)

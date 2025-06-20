@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.game (
 );
 -- Create a separate sequence for users table IDs
 CREATE SEQUENCE IF NOT EXISTS users_seq;
+CREATE SEQUENCE IF NOT EXISTS patch_seq;
 
 CREATE TABLE IF NOT EXISTS public.users (
 	id bigint DEFAULT nextval('users_seq'::regclass) NOT NULL,
