@@ -97,6 +97,7 @@ async def delete_game_by_id(game_id: int) -> bool:
         ui.notify('Unauthorized', color='negative')
         return False
     await game.delete()
+    mark_games_changed(user.id)
     return True
 
 

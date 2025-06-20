@@ -122,3 +122,38 @@ def test_unauthenticated_delete_does_not_raise():
     asyncio.run(main.delete_game_by_id(1))
     assert notifications == ['Unauthorized']
     assert not called
+
+
+def test_delete_updates_game_version():
+    setup_env()
+    sys.modules.pop('main', None)
+    main = importlib.import_module('main')
+
+    user_id = 1
+
+    async def fake_user():
+        return types.SimpleNamespace(id=user_id)
+
+    main.get_current_user = fake_user
+
+    delete_called = False
+
+    class DummyGame:
+        async def delete(self):
+            nonlocal delete_called
+            delete_called = True
+
+    async def fake_get_or_none(*a, **kw):
+        return DummyGame()
+
+    main.models.Game.get_or_none = fake_get_or_none
+    main.ui.notify = lambda *a, **kw: None
+
+    main.game_data_version.clear()
+    main.game_data_version[user_id] = 0
+
+    result = asyncio.run(main.delete_game_by_id(1))
+
+    assert result is True
+    assert delete_called
+    assert main.game_data_version[user_id] == 1
