@@ -70,6 +70,17 @@ async def compute_placement_percentages(user_id: int, season: int):
     return categories, percentages
 
 
+async def compute_runs_per_hero(user_id: int, season: int):
+    """Return a list of heroes and how many runs each hero has for a season."""
+    games = await models.Game.filter(player_id=user_id, season=season)
+    counts = {}
+    for g in games:
+        hero = g.hero.lower().capitalize()
+        counts[hero] = counts.get(hero, 0) + 1
+    heroes = sorted(counts.keys())
+    return heroes, [counts[h] for h in heroes]
+
+
 async def delete_game_by_id(game_id: int) -> bool:
     """Delete a game for the current user by id.
 
@@ -236,6 +247,7 @@ async def index(request: Request, season_id: str = None):
     ranked_table = None
     unranked_table = None
     placement_chart = None
+    hero_chart = None
     
     context.session = request.session
     current_session = request.session
@@ -500,7 +512,7 @@ async def index(request: Request, season_id: str = None):
         @ui.refreshable
         async def stats_tables():
 
-            nonlocal ranked_table, unranked_table, placement_chart
+            nonlocal ranked_table, unranked_table, placement_chart, hero_chart
 
             has_data = await models.Game.filter(player_id=user.id, season=season.value).exists()
             if not has_data:
@@ -508,6 +520,7 @@ async def index(request: Request, season_id: str = None):
                 ranked_table = None
                 unranked_table = None
                 placement_chart = None
+                hero_chart = None
                 return
 
             ranked_heroes, ranked_stats = await collect_stats(True)
@@ -553,6 +566,7 @@ async def index(request: Request, season_id: str = None):
                 unranked_rows.append(totals)
 
             categories_p, percentages = await compute_placement_percentages(user.id, season.value)
+            hero_names, hero_counts = await compute_runs_per_hero(user.id, season.value)
             
             chart_options = {
                 "tooltip": {"trigger": "item"},
@@ -581,6 +595,15 @@ async def index(request: Request, season_id: str = None):
 
             }
 
+            hero_chart_options = {
+                "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+                "xAxis": {"type": "category", "data": hero_names},
+                "yAxis": {"type": "value"},
+                "series": [
+                    {"type": "bar", "data": hero_counts}
+                ],
+            }
+
             if ranked_table is None:
                 stats_container.clear()
                 with stats_container:
@@ -591,10 +614,13 @@ async def index(request: Request, season_id: str = None):
                         with ui.column().classes('flex-1'):
                             ui.label('Non-Ranked Game Stats').classes('text-lg')
                             unranked_table = ui.table(columns=columns, rows=unranked_rows).classes('w-full')
-                    with ui.row().classes('w-full mt-4'):
+                    with ui.row().classes('w-full mt-4 gap-4'):
                         with ui.column().classes('w-1/3'):
                             ui.label('Placement Averages').classes('text-lg')
                             placement_chart = ui.echart(options=chart_options).classes('w-full h-64')
+                        with ui.column().classes('w-1/3'):
+                            ui.label('Runs per Hero').classes('text-lg')
+                            hero_chart = ui.echart(options=hero_chart_options).classes('w-full h-64')
             else:
                 ranked_table.rows = ranked_rows
                 ranked_table.update()
@@ -604,8 +630,11 @@ async def index(request: Request, season_id: str = None):
                     {"value": p, "name": c}
                     for c, p in zip(categories_p, percentages)
                 ]
-
                 placement_chart.update()
+
+                hero_chart.options['xAxis']['data'] = hero_names
+                hero_chart.options['series'][0]['data'] = hero_counts
+                hero_chart.update()
         
     with ui.row().classes('flex w-full gap-4'):
 
