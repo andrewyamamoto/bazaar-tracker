@@ -604,6 +604,7 @@ async def index(request: Request, season_id: str = None):
                     {"value": p, "name": c}
                     for c, p in zip(categories_p, percentages)
                 ]
+
                 placement_chart.update()
         
     with ui.row().classes('flex w-full gap-4'):
