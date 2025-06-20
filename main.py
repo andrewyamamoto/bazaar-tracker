@@ -554,31 +554,49 @@ async def index(request: Request, season_id: str = None):
 
             categories_p, percentages = await compute_placement_percentages(user.id, season.value)
             
+            bar_colors = ["#ededed", "#cd7f32", "#ffd700", "#3b82f6", "#22c55e"]  # Example: dark grey, bronze, gold, blue, green
             chart_options = {
-                "tooltip": {"trigger": "item"},
-                "legend": {"top": "center", "left": "left", "orient": "vertical"},
-
+                "backgroundColor": "#18181b",  # Add dark background color
+                "tooltip": {"trigger": "axis"},
+                "legend": {"show": False},
+                "xAxis": {
+                    "type": "category",
+                    "data": categories_p,
+                    "axisLabel": {"color": "#ffffff"},
+                },
+                "yAxis": {
+                    "type": "value",
+                    "axisLabel": {"color": "#ffffff"},
+                    "splitLine": {
+                        "show": True,
+                        "lineStyle": {
+                            "color": "#222222"  # dark grey for grid lines
+                        }
+                    },
+                },
                 "series": [
                     {
                         "name": "Placement",
-                        "type": "pie",
-                        "radius": ["40%", "70%"],
-                        "avoidLabelOverlap": True,
-                        "label": {
-                            "formatter": "{b}: {d}%",
-                            "position": "outside",
-                            "color": "#ffffff",
-                            "textBorderWidth": 0,
-                        },
-                        "labelLine": {"show": True},
-
+                        "type": "bar",
                         "data": [
-                            {"value": p, "name": c}
-                            for c, p in zip(categories_p, percentages)
+                            {"value": p, "itemStyle": {"color": bar_colors[i % len(bar_colors)]}}
+                            for i, p in enumerate(percentages)
                         ],
+                        "label": {
+                            "show": True,
+                            "position": "top",
+                            "formatter": "{c}%",
+                            "color": "#ffffff",
+                        },
                     }
                 ],
-
+                "grid": {
+                    "left": "5%",
+                    "right": "5%",
+                    "bottom": "10%",
+                    "top": "15%",
+                    "containLabel": True
+                }
             }
 
             if ranked_table is None:
