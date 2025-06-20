@@ -120,3 +120,23 @@ def test_compute_placement_percentages():
     assert result['3rd'] == 10.71
     assert result['No Placement'] == 89.29
     assert all(result[c] == 0 for c in ['2nd', '1st', 'Perfect Game'])
+
+
+def test_compute_runs_per_hero():
+    setup_env()
+    main = importlib.import_module('main')
+
+    class DummyGame:
+        def __init__(self, hero):
+            self.hero = hero
+
+    games = [DummyGame('Dooley'), DummyGame('Dooley'), DummyGame('Mak')]
+
+    async def fake_filter(*a, **kw):
+        return games
+
+    main.models.Game.filter = fake_filter
+
+    heroes, counts = asyncio.run(main.compute_runs_per_hero(1, 0))
+    assert heroes == ['Dooley', 'Mak']
+    assert counts == [2, 1]
