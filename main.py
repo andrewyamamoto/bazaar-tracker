@@ -156,6 +156,9 @@ async def authenticate(username, password):
         return user
     return None
 
+async def clear_input():
+    ranked.set_value('')
+
 @app.post('/api/login')
 async def api_login(request: Request):
     data = await request.json()
@@ -230,6 +233,10 @@ async def logout_page(request: Request):
 @ui.page('/dashboard/{season_id}')
 async def index(request: Request, season_id: str = None):
 
+    ranked_table = None
+    unranked_table = None
+    placement_chart = None
+    
     context.session = request.session
     current_session = request.session
     
@@ -345,6 +352,7 @@ async def index(request: Request, season_id: str = None):
                 ui.label("Ranked" if game.ranked else "Non-Ranked").classes('truncate text-center')
                 ui.label("Perfect Game" if game.wins == 10 and game.finished == 10 else f"{game.wins}/{game.finished}").classes(
                     f'truncate {placement_color} text-center')
+                    
                 ui.link('View', target=game.media, new_tab=True).classes('text-blue-600 underline text-center') if game.media else ui.label('-').classes('truncate text-center text-gray-500')
 
                 with ui.dialog().props('maximized') as dialog, ui.card().classes('w-full h-full'):
@@ -353,7 +361,11 @@ async def index(request: Request, season_id: str = None):
 
                 ui.link('View').on('click', lambda d=dialog: d.open()).classes('text-blue-600 underline text-center') if game.upload else ui.label('No Upload').classes('truncate text-gray-500 text-center')
 
-                ui.label(game.notes or '').classes('truncate text-center')
+                with ui.dialog().props() as dialog, ui.card().classes(''):
+                    ui.label(game.notes).props().classes()
+
+                ui.link('View').on('click', lambda d=dialog: d.open()).classes('text-blue-600 underline text-center') if game.notes else ui.label('No Notes').classes('truncate text-gray-500 text-center')
+
                 played_str = game.played.strftime('%Y-%m-%d %I:%M %p') if game.played else ''
                 ui.label(played_str).classes('truncate text-center')
                 ui.button(icon="delete", on_click=lambda g=game.id: delete_game(g)).props('color=negative flat')
@@ -412,7 +424,8 @@ async def index(request: Request, season_id: str = None):
         if row:
             row.delete()
         await load_page(current_page)
-        await stats_tables.refresh()
+        # await 
+        stats_tables.refresh()
         nonlocal session_version
         mark_games_changed(user.id)
         session_version = game_data_version.get(user.id, 0)
@@ -440,7 +453,7 @@ async def index(request: Request, season_id: str = None):
 
             nonlocal session_version
             await load_page(current_page)
-            await stats_tables.refresh()
+            stats_tables.refresh()
             mark_games_changed(user.id)
             session_version = game_data_version.get(user.id, 0)
 
@@ -452,6 +465,7 @@ async def index(request: Request, season_id: str = None):
             notes.value = ''
             state.uploaded_url = ''
             upload_component.reset()
+           
             ui.notify('Run added!')
         finally:
             add_run_btn.props(remove='disable')
@@ -503,6 +517,8 @@ async def index(request: Request, season_id: str = None):
                 {"name": "Perfect Game", "label": "Perfect Game", "field": "Perfect Game"},
             ]
 
+            categories = ["No Placement", "3rd", "2nd", "1st", "Perfect Game"]
+
             ranked_rows = [
                 {"hero": h,
                  "No Placement": ranked_stats[h]['No Placement'],
@@ -511,6 +527,11 @@ async def index(request: Request, season_id: str = None):
                  "1st": ranked_stats[h]['1st'],
                  "Perfect Game": ranked_stats[h]['Perfect Game']} for h in ranked_heroes
             ]
+            if ranked_rows:
+                totals = {"hero": "Total"}
+                for cat in categories:
+                    totals[cat] = sum(r[cat] for r in ranked_rows)
+                ranked_rows.append(totals)
 
             unranked_rows = [
                 {"hero": h,
@@ -520,21 +541,14 @@ async def index(request: Request, season_id: str = None):
                  "1st": unranked_stats[h]['1st'],
                  "Perfect Game": unranked_stats[h]['Perfect Game']} for h in unranked_heroes
             ]
-
-            categories = ["No Placement", "3rd", "2nd", "1st", "Perfect Game"]
-
-            if ranked_rows:
-                totals = {"hero": "Total"}
-                for cat in categories:
-                    totals[cat] = sum(r[cat] for r in ranked_rows)
-                ranked_rows.append(totals)
-
             if unranked_rows:
                 totals = {"hero": "Total"}
                 for cat in categories:
                     totals[cat] = sum(r[cat] for r in unranked_rows)
                 unranked_rows.append(totals)
+
             categories_p, percentages = await compute_placement_percentages(user.id, season.value)
+            
             chart_options = {
                 "tooltip": {"trigger": "item"},
                 "legend": {"top": "center", "left": "left", "orient": "vertical"},
