@@ -744,13 +744,13 @@ async def index(request: Request, season_id: str = None):
     # automatically refresh the user's data when any run is created or deleted
     session_version = game_data_version.get(user.id, 0)
 
-    def refresh_if_needed():
+    async def refresh_if_needed():
         nonlocal session_version
         current_version = game_data_version.get(user.id, 0)
         if session_version != current_version:
             session_version = current_version
-            ui.run_async(load_page(current_page))
-            ui.run_async(stats_tables.refresh())
+            await load_page(current_page)
+            stats_tables.refresh()
 
     ui.timer(1.0, refresh_if_needed)
 
