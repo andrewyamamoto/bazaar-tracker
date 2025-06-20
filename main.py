@@ -340,7 +340,7 @@ async def index(request: Request, season_id: str = None):
     )
 
     async def add_row(game) -> None:
-        username = game.player.username
+        # username = game.player.username
         placement_color = (
             "text-white" if game.wins == 10 and game.finished == 10 else
             "text-yellow-400" if game.wins == 10 and game.finished > 10 else
@@ -358,14 +358,15 @@ async def index(request: Request, season_id: str = None):
 
         with games_container:
             with ui.element('div').style(grid_style) as row:
-                ui.label(username).classes('truncate text-center')
+                # ui.label(username).classes('truncate text-center')
                 ui.label(game.hero).classes(
-                    f'truncate rounded-full px-3 py-1 {hero_class} text-sm font-semibold shadow text-center'
+                    f'truncate rounded px-3 py-1 {hero_class} text-sm font-semibold shadow text-center'
                 )
                 ui.label("Ranked" if game.ranked else "Non-Ranked").classes('truncate text-center')
                 ui.label("Perfect Game" if game.wins == 10 and game.finished == 10 else f"{game.wins}/{game.finished}").classes(
                     f'truncate {placement_color} text-center')
-                    
+                
+                ui.label(str(game.patch_id) if hasattr(game, 'patch_id') and game.patch_id else '-').classes('truncate text-center')
                 ui.link('View', target=game.media, new_tab=True).classes('text-blue-600 underline text-center') if game.media else ui.label('-').classes('truncate text-center text-gray-500')
 
                 with ui.dialog().props('maximized') as dialog, ui.card().classes('w-full h-full'):
@@ -415,7 +416,7 @@ async def index(request: Request, season_id: str = None):
         if games:
             with games_container:
                 with ui.element('div').style(grid_style).classes('font-bold'):
-                    for header in ['Player', 'Hero', 'Mode', 'Win/Day', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
+                    for header in ['Hero', 'Mode', 'Win/Day','Patch', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
                         ui.label(header).classes('truncate text-center')
         for game in games:
             await add_row(game)
@@ -462,6 +463,7 @@ async def index(request: Request, season_id: str = None):
                 media=media.value,
                 upload=state.uploaded_url,
                 notes=notes.value,
+                patch_id=patch_id_hidden.value,
             )
 
             nonlocal session_version
@@ -475,6 +477,7 @@ async def index(request: Request, season_id: str = None):
             wins.value = 0
             finished.value = 0
             media.value = ''
+            patch_id_hidden.value = ''
             notes.value = ''
             state.uploaded_url = ''
             upload_component.reset()
@@ -485,8 +488,16 @@ async def index(request: Request, season_id: str = None):
 
     
     with ui.column().classes('w-full'):
+        async def get_current_patch_version():
+            # Example: fetch from a remote API or local file
+            # Here, we just return a hardcoded value for demonstration
+            patch = await models.Patches.filter().order_by('-id').first()
+            return patch.version if patch else "Unknown"
+
+        patchversion = await get_current_patch_version()
+        
         ui.label('Bazaar Tracker').classes('text-3xl font-bold')
-        ui.label(f'Current Season: {season.value}').classes('text-lg')
+        ui.label(f'Current Season: {season.value} (Patch:{patchversion})').classes('text-sm')
 
         async def get_heroes():
             heroes = await models.Game.filter(player_id=user.id, season=season.value).distinct().values_list("hero", flat=True)
@@ -718,14 +729,15 @@ async def index(request: Request, season_id: str = None):
 
                 player = PlayerValue()
             
-            # Display the current patch version at the top of the form
-            async def get_current_patch_version():
-                # Example: fetch from a remote API or local file
-                # Here, we just return a hardcoded value for demonstration
-                return "1.0.0"
+            
+            # async def get_current_patch_id():
+            #     # Example: fetch from a remote API or local file
+            #     # Here, we just return a hardcoded value for demonstration
+            #     patch = await models.Patches.filter().order_by('-id').first()
+            #     return patch.id if patch else "Unknown"
 
-            patch_version = await get_current_patch_version()
-            ui.label(f"Current Patch Version: {patch_version}").classes('text-sm text-gray-400 mb-2')
+            # patchid = await get_current_patch_id()
+            
             with ui.row().classes('items-center gap-0'):
                 ranked = ui.checkbox()
                 ui.label('Ranked').bind_visibility_from(ranked, 'visible', lambda _: True)
@@ -740,6 +752,10 @@ async def index(request: Request, season_id: str = None):
 
             finished_label = ui.label(f"Day Finished: {finished.value}")
             finished_label.bind_text_from(finished, "value", lambda v: f"Day Finished: {v}")
+
+            # Hidden field to store patchid for database insertion
+            patch_id_hidden = ui.input('', value=patchversion).props('type=hidden')
+            # patch_id = ui.input('', value=patchid).props('type=hidden')
 
             def enforce_win_limit(e=None):
                 if wins.value > finished.value:

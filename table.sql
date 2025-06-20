@@ -3,6 +3,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.game (
 	id bigint DEFAULT nextval('game_seq'::regclass) NOT NULL,
 	player_id character varying,
+	patch_id character varying,
 	season integer,
 	ranked boolean,
 	hero character varying,

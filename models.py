@@ -6,6 +6,8 @@ class Game(Model):
     # player = fields.CharField(max_length=255)
     player = fields.ForeignKeyField('models.Users', related_name='games')
     season = fields.IntField()
+    # patch = fields.ForeignKeyField('models.Patches', related_name='games')
+    patch_id = fields.CharField(max_length=255)
     ranked = fields.BooleanField()
     hero = fields.CharField(max_length=255)
     wins = fields.IntField()
@@ -19,8 +21,8 @@ class Users(Model):
     id = fields.IntField(pk=True)
     username = fields.CharField(max_length=150, unique=True)
     password = fields.CharField(max_length=255)
-    
-class PatchVersion(Model):
+
+class Patches(Model):
     id = fields.IntField(pk=True)
     version = fields.CharField(max_length=150, unique=True)
 
