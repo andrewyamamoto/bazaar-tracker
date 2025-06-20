@@ -580,7 +580,7 @@ async def index(request: Request, season_id: str = None):
             categories_p, percentages = await compute_placement_percentages(user.id, season.value)
             hero_names, hero_counts = await compute_runs_per_hero(user.id, season.value)
             
-            bar_colors = ["#ededed", "#cd7f32", "#ffd700", "#3b82f6", "#22c55e"]  # Example: dark grey, bronze, gold, blue, green
+            placement_colors = ["#ededed", "#cd7f32", "#ffd700", "#3b82f6", "#22c55e"]  # Example: dark grey, bronze, gold, blue, green
             chart_options = {
                 "backgroundColor": "#18181b",  # Add dark background color
                 "tooltip": {"trigger": "axis"},
@@ -605,7 +605,7 @@ async def index(request: Request, season_id: str = None):
                         "name": "Placement",
                         "type": "bar",
                         "data": [
-                            {"value": p, "itemStyle": {"color": bar_colors[i % len(bar_colors)]}}
+                            {"value": p, "itemStyle": {"color": placement_colors[i % len(placement_colors)]}}
                             for i, p in enumerate(percentages)
                         ],
                         "label": {
@@ -638,7 +638,7 @@ async def index(request: Request, season_id: str = None):
                 'Pygmalien': '#f56a1f',
                 'Vanessa': '#6312de',
             }
-            bar_colors = [hero_colors.get(name, "#888888") for name in all_hero_names]
+            hero_bar_colors = [hero_colors.get(name, "#888888") for name in all_hero_names]
 
             hero_chart_options = {
                 "backgroundColor": "#18181b",
@@ -661,7 +661,7 @@ async def index(request: Request, season_id: str = None):
                         "data": [
                             {
                                 "value": round((hero_data[name] / sum(hero_data.values()) * 100), 2) if sum(hero_data.values()) else 0,
-                                "itemStyle": {"color": bar_colors[i]}
+                                "itemStyle": {"color": hero_bar_colors[i]}
                             }
                             for i, name in enumerate(all_hero_names)
                         ],
@@ -704,14 +704,22 @@ async def index(request: Request, season_id: str = None):
                 ranked_table.update()
                 unranked_table.rows = unranked_rows
                 unranked_table.update()
+                placement_chart.options['xAxis']['data'] = categories_p
                 placement_chart.options['series'][0]['data'] = [
-                    {"value": p, "name": c}
-                    for c, p in zip(categories_p, percentages)
+                    {"value": p, "itemStyle": {"color": placement_colors[i % len(placement_colors)]}}
+                    for i, p in enumerate(percentages)
                 ]
                 placement_chart.update()
 
-                hero_chart.options['xAxis']['data'] = hero_names
-                hero_chart.options['series'][0]['data'] = hero_counts
+                hero_chart.options['xAxis']['data'] = all_hero_names
+                hero_chart.options['series'][0]['data'] = [
+                    {
+                        "value": round((hero_data[name] / sum(hero_data.values()) * 100), 2)
+                        if sum(hero_data.values()) else 0,
+                        "itemStyle": {"color": hero_bar_colors[i]},
+                    }
+                    for i, name in enumerate(all_hero_names)
+                ]
                 hero_chart.update()
         
     with ui.row().classes('flex w-full gap-4'):
