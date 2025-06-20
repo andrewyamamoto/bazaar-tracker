@@ -613,13 +613,61 @@ async def index(request: Request, season_id: str = None):
                 }
             }
 
+            # Ensure all HERO_OPTIONS are shown, even if there is no data
+            all_hero_names = sorted({h.lower().capitalize() for h in HERO_OPTIONS})
+            hero_data = {name: 0 for name in all_hero_names}
+            for name, count in zip(hero_names, hero_counts):
+                hero_data[name] = count
+
+            # Assign user hero colors
+            hero_colors = {
+                'Dooley': '#397d83',
+                'Mak': '#2da337',
+                'Pygmalien': '#f56a1f',
+                'Vanessa': '#6312de',
+            }
+            bar_colors = [hero_colors.get(name, "#888888") for name in all_hero_names]
+
             hero_chart_options = {
+                "backgroundColor": "#18181b",
                 "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-                "xAxis": {"type": "category", "data": hero_names},
-                "yAxis": {"type": "value"},
+                "xAxis": {"type": "category", "data": all_hero_names, "axisLabel": {"color": "#ffffff"}},
+                "yAxis": {
+                    "type": "value", 
+                    "axisLabel": {"color": "#ffffff"}, 
+                    "max": 100,
+                    "splitLine": {
+                        "show": True,
+                        "lineStyle": {
+                            "color": "#222222"  # dark grey for grid lines
+                        }
+                    },
+                },
                 "series": [
-                    {"type": "bar", "data": hero_counts}
+                    {
+                        "type": "bar",
+                        "data": [
+                            {
+                                "value": round((hero_data[name] / sum(hero_data.values()) * 100), 2) if sum(hero_data.values()) else 0,
+                                "itemStyle": {"color": bar_colors[i]}
+                            }
+                            for i, name in enumerate(all_hero_names)
+                        ],
+                        "label": {
+                            "show": True,
+                            "position": "top",
+                            "color": "#ffffff",
+                            "formatter": "{c}%",
+                        },
+                    }
                 ],
+                "grid": {
+                    "left": "5%",
+                    "right": "5%",
+                    "bottom": "10%",
+                    "top": "15%",
+                    "containLabel": True
+                }
             }
 
             if ranked_table is None:

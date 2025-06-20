@@ -24,4 +24,10 @@ CREATE TABLE IF NOT EXISTS public.users (
 	PRIMARY KEY(id)
 );
 
+CREATE TABLE IF NOT EXISTS public.patches (
+	id bigint DEFAULT nextval('patch_seq'::regclass) NOT NULL,
+	patch_version character varying,
+	PRIMARY KEY(id)
+);
+
 COMMIT;

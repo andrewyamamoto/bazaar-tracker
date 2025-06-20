@@ -19,6 +19,10 @@ class Users(Model):
     id = fields.IntField(pk=True)
     username = fields.CharField(max_length=150, unique=True)
     password = fields.CharField(max_length=255)
+    
+class PatchVersion(Model):
+    id = fields.IntField(pk=True)
+    version = fields.CharField(max_length=150, unique=True)
 
 class SeasonValue:
     def __init__(self, default):
