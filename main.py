@@ -600,7 +600,11 @@ async def index(request: Request, season_id: str = None):
                 ranked_table.update()
                 unranked_table.rows = unranked_rows
                 unranked_table.update()
-                placement_chart.options = chart_options
+                placement_chart.options['series'][0]['data'] = [
+                    {"value": p, "name": c}
+                    for c, p in zip(categories_p, percentages)
+                ]
+
                 placement_chart.update()
         
     with ui.row().classes('flex w-full gap-4'):
