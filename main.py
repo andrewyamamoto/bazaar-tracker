@@ -500,9 +500,14 @@ async def index(request: Request, season_id: str = None):
         @ui.refreshable
         async def stats_tables():
 
-            stats_container.clear()
+            nonlocal ranked_table, unranked_table, placement_chart
+
             has_data = await models.Game.filter(player_id=user.id, season=season.value).exists()
             if not has_data:
+                stats_container.clear()
+                ranked_table = None
+                unranked_table = None
+                placement_chart = None
                 return
 
             ranked_heroes, ranked_stats = await collect_stats(True)
@@ -576,18 +581,30 @@ async def index(request: Request, season_id: str = None):
 
             }
 
-            with stats_container:
-                with ui.row().classes('w-full gap-4'):
-                    with ui.column().classes('flex-1'):
-                        ui.label('Ranked Game Stats').classes('text-lg')
-                        ui.table(columns=columns, rows=ranked_rows).classes('w-full')
-                    with ui.column().classes('flex-1'):
-                        ui.label('Non-Ranked Game Stats').classes('text-lg')
-                        ui.table(columns=columns, rows=unranked_rows).classes('w-full')
-                with ui.row().classes('w-full mt-4'):
-                    with ui.column().classes('w-1/3'):
-                        ui.label('Placement Averages').classes('text-lg')
-                        ui.echart(options=chart_options).classes('w-full h-64')
+            if ranked_table is None:
+                stats_container.clear()
+                with stats_container:
+                    with ui.row().classes('w-full gap-4'):
+                        with ui.column().classes('flex-1'):
+                            ui.label('Ranked Game Stats').classes('text-lg')
+                            ranked_table = ui.table(columns=columns, rows=ranked_rows).classes('w-full')
+                        with ui.column().classes('flex-1'):
+                            ui.label('Non-Ranked Game Stats').classes('text-lg')
+                            unranked_table = ui.table(columns=columns, rows=unranked_rows).classes('w-full')
+                    with ui.row().classes('w-full mt-4'):
+                        with ui.column().classes('w-1/3'):
+                            ui.label('Placement Averages').classes('text-lg')
+                            placement_chart = ui.echart(options=chart_options).classes('w-full h-64')
+            else:
+                ranked_table.rows = ranked_rows
+                ranked_table.update()
+                unranked_table.rows = unranked_rows
+                unranked_table.update()
+                placement_chart.options['series'][0]['data'] = [
+                    {"value": p, "name": c}
+                    for c, p in zip(categories_p, percentages)
+                ]
+                placement_chart.update()
         
     with ui.row().classes('flex w-full gap-4'):
 
