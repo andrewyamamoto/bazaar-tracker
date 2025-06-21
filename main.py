@@ -358,15 +358,19 @@ async def index(request: Request, season_id: str = None):
 
         with games_container:
             with ui.element('div').style(grid_style) as row:
-                # ui.label(username).classes('truncate text-center')
-                ui.label(game.hero).classes(
-                    f'truncate rounded px-3 py-1 {hero_class} text-sm font-semibold shadow text-center'
-                )
+                with ui.column().classes('items-center gap-2'):
+                    ui.label(game.hero).classes(
+                        f'truncate rounded px-3 py-1 {hero_class} text-sm font-semibold shadow text-center'
+                    )
+                    ui.label(f"{getattr(game.patch_id, 'patch_id', '') or game.patch_id}").classes(
+                        'text-xs text-gray-400 text-center'
+                    )
+
                 ui.label("Ranked" if game.ranked else "Non-Ranked").classes('truncate text-center')
                 ui.label("Perfect Game" if game.wins == 10 and game.finished == 10 else f"{game.wins}/{game.finished}").classes(
                     f'truncate {placement_color} text-center')
                 
-                ui.label(str(game.patch_id) if hasattr(game, 'patch_id') and game.patch_id else '-').classes('truncate text-center')
+                # ui.label(str(game.patch_id) if hasattr(game, 'patch_id') and game.patch_id else '-').classes('truncate text-center')
                 ui.link('View', target=game.media, new_tab=True).classes('text-blue-600 underline text-center') if game.media else ui.label('-').classes('truncate text-center text-gray-500')
 
                 with ui.dialog().props('maximized') as dialog, ui.card().classes('w-full h-full'):
@@ -416,7 +420,7 @@ async def index(request: Request, season_id: str = None):
         if games:
             with games_container:
                 with ui.element('div').style(grid_style).classes('font-bold'):
-                    for header in ['Hero', 'Mode', 'Win/Day','Patch', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
+                    for header in ['Hero', 'Mode', 'Win/Day', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
                         ui.label(header).classes('truncate text-center')
         for game in games:
             await add_row(game)
@@ -489,15 +493,13 @@ async def index(request: Request, season_id: str = None):
     
     with ui.column().classes('w-full'):
         async def get_current_patch_version():
-            # Example: fetch from a remote API or local file
-            # Here, we just return a hardcoded value for demonstration
             patch = await models.Patches.filter().order_by('-id').first()
             return patch.version if patch else "Unknown"
 
         patchversion = await get_current_patch_version()
         
         ui.label('Bazaar Tracker').classes('text-3xl font-bold')
-        ui.label(f'Current Season: {season.value} (Patch:{patchversion})').classes('text-sm')
+        ui.label(f'Current Season: {season.value} ({patchversion})').classes('text-sm')
 
         async def get_heroes():
             heroes = await models.Game.filter(player_id=user.id, season=season.value).distinct().values_list("hero", flat=True)
