@@ -520,7 +520,7 @@ async def index(request: Request, season_id: str = None):
             wins.value = 0
             finished.value = 0
             media.value = ''
-            patch_id_hidden.value = ''
+            # patch_id_hidden.value = ''
             notes.value = ''
             state.uploaded_url = ''
             upload_component.reset()
