@@ -699,7 +699,15 @@ async def index(request: Request, season_id: str = None):
             hero_chart_options = {
                 "backgroundColor": "#18181b",
                 "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-                "xAxis": {"type": "category", "data": all_hero_names, "axisLabel": {"color": "#ffffff"}},
+                "xAxis": {
+                    "type": "category", 
+                    "data": all_hero_names, 
+                    "axisLabel": {
+                        "color": "#ffffff",
+                        "interval": 0,  # Show all labels
+                        "rotate": 0,    # No rotation, adjust if needed
+                    },
+                },
                 "yAxis": {
                     "type": "value", 
                     "axisLabel": {"color": "#ffffff"}, 
