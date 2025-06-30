@@ -334,10 +334,23 @@ async def index(request: Request, season_id: str = None):
             ui.notify('Unexpected error during upload', color='negative')
 
     grid_style = (
-        'display: grid; '
-        'grid-template-columns: repeat(9, minmax(100px, 1fr)); '
-        'gap: 0.5rem; align-items: center; width: 100%;'
+        'display: grid; border:1px solid #333; padding:15px;background-color:#181818;border-top:none;'
+        'grid-template-columns: repeat(8, minmax(100px, 1fr)); '
+        'gap: 0.25rem; align-items: center; width: 100%;'
     )
+    grid_style_2 = (
+        'display: grid; border:1px solid #333; padding:15px;border-radius:5px 5px 0 0; background-color:#1f1f1f;'
+        'grid-template-columns: repeat(8, minmax(100px, 1fr)); '
+        'gap: 0.25rem; align-items: center; width: 100%;'
+    )
+    ui.add_head_html("""
+    <style>
+    #games-container >div:last-child {
+        border-radius:0 0 5px 5px !important;
+    }
+    
+    </style>
+    """)
 
     async def add_row(game) -> None:
         # username = game.player.username
@@ -358,36 +371,62 @@ async def index(request: Request, season_id: str = None):
 
         with games_container:
             with ui.element('div').style(grid_style) as row:
-                with ui.column().classes('items-center gap-2'):
-                    ui.label(game.hero).classes(
-                        f'truncate rounded px-3 py-1 {hero_class} text-sm font-semibold shadow text-center'
-                    )
-                    ui.label(f"{getattr(game.patch_id, 'patch_id', '') or game.patch_id}").classes(
-                        'text-xs text-gray-400 text-center'
+                if(game.patch_id == ""):
+                    patch_version = ""
+                else:
+                    patch_version = " (" + getattr(game.patch_id, 'patch_id', game.patch_id) + ")"
+                    
+                with ui.element('div').style('display: grid; align-items: center;'):
+                    html = f'''
+                    <span>{game.hero}</span>
+                    <span class='text-xs'>{patch_version}</span>
+                    '''
+                    ui.html(html).classes(
+                        f'truncate rounded px-3 py-1 {hero_class} font-semibold shadow text-center'
                     )
 
+                # Ranked/Non-Ranked
                 ui.label("Ranked" if game.ranked else "Non-Ranked").classes('truncate text-center')
+
+                # Win/Day
                 ui.label("Perfect Game" if game.wins == 10 and game.finished == 10 else f"{game.wins}/{game.finished}").classes(
                     f'truncate {placement_color} text-center')
-                
-                # ui.label(str(game.patch_id) if hasattr(game, 'patch_id') and game.patch_id else '-').classes('truncate text-center')
-                ui.link('View', target=game.media, new_tab=True).classes('text-blue-600 underline text-center') if game.media else ui.label('-').classes('truncate text-center text-gray-500')
 
-                with ui.dialog().props('maximized') as dialog, ui.card().classes('w-full h-full'):
-                    ui.image(game.upload).props('fit=none').classes('mb-4')
-                    ui.button('Close', on_click=dialog.close).classes('mt-2')
+                # Media link
+                if game.media:
+                    with ui.element('div').style('display: flex; justify-content: center;'):
+                        ui.link('View', target=game.media, new_tab=True).classes('text-blue-600 underline text-center')
+                else:
+                    ui.label('-').classes('truncate text-center text-gray-500')
 
-                ui.link('View').on('click', lambda d=dialog: d.open()).classes('text-blue-600 underline text-center') if game.upload else ui.label('No Upload').classes('truncate text-gray-500 text-center')
+                # Upload (image/video) dialog
+                if game.upload:
+                    with ui.element('div').style('display: flex; justify-content: center;'):
+                        with ui.dialog().props('maximized') as dialog_upload, ui.card().classes('w-full h-full'):
+                            ui.image(game.upload).props('fit=none').classes('mb-4')
+                            ui.button('Close', on_click=dialog_upload.close).classes('mt-2')
+                        ui.link('View').on('click', lambda d=dialog_upload: d.open()).classes('text-blue-600 underline text-center')
+                else:
+                    ui.label('No Upload').classes('text-gray-500 text-center')
 
-                with ui.dialog().props() as dialog, ui.card().classes(''):
-                    ui.label(game.notes).props().classes()
+                # Notes dialog
+                if game.notes:
+                    with ui.element('div').style('display: flex; justify-content: center;'):
+                        with ui.dialog().props() as dialog_notes, ui.card().classes(''):
+                            ui.label(game.notes).props().classes()
+                        ui.link('View').on('click', lambda d=dialog_notes: d.open()).classes('text-blue-600 underline text-center')
+                else:
+                    ui.label('No Notes').classes('truncate text-gray-500 text-center')
 
-                ui.link('View').on('click', lambda d=dialog: d.open()).classes('text-blue-600 underline text-center') if game.notes else ui.label('No Notes').classes('truncate text-gray-500 text-center')
-
+                # Played date
                 played_str = game.played.strftime('%Y-%m-%d %I:%M %p') if game.played else ''
                 ui.label(played_str).classes('truncate text-center')
-                ui.button(icon="delete", on_click=lambda g=game.id: delete_game(g)).props('color=negative flat')
-            ui.separator().classes('col-span-9 my-1')
+
+                # Actions (delete)
+                with ui.element('div').style('display: flex; justify-content: center;'):
+                    ui.button(icon="delete", on_click=lambda g=game.id: delete_game(g)).props('color=negative flat')
+                    
+            # ui.separator().classes('col-span-8 my-1')
         game_rows[game.id] = row
 
     async def load_page(page_number=1):
@@ -419,7 +458,7 @@ async def index(request: Request, season_id: str = None):
 
         if games:
             with games_container:
-                with ui.element('div').style(grid_style).classes('font-bold'):
+                with ui.element('div').style(grid_style_2).classes('font-bold'):
                     for header in ['Hero', 'Mode', 'Win/Day', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
                         ui.label(header).classes('truncate text-center')
         for game in games:
@@ -739,15 +778,6 @@ async def index(request: Request, season_id: str = None):
 
                 player = PlayerValue()
             
-            
-            # async def get_current_patch_id():
-            #     # Example: fetch from a remote API or local file
-            #     # Here, we just return a hardcoded value for demonstration
-            #     patch = await models.Patches.filter().order_by('-id').first()
-            #     return patch.id if patch else "Unknown"
-
-            # patchid = await get_current_patch_id()
-            
             with ui.row().classes('items-center gap-0'):
                 ranked = ui.checkbox()
                 ui.label('Ranked').bind_visibility_from(ranked, 'visible', lambda _: True)
@@ -816,8 +846,8 @@ async def index(request: Request, season_id: str = None):
             add_run_btn = ui.button('Add Run', on_click=create).classes('w-full').props('color=primary')
 
         with ui.column().classes('flex-1'):
-            games_container = ui.column().classes('w-full')
-            pagination_row = ui.row().classes('w-full justify-end mt-4')
+            games_container = ui.column().classes('w-full gap-y-0').props('id=games-container')
+            pagination_row = ui.row().classes('w-full justify-end mt-1').style('background-color: #181818; padding: 10px; border-radius: 5px;border:1px solid #333;')
             stats_container = ui.column().classes('w-full')
             await list_of_games()
             await stats_tables()
