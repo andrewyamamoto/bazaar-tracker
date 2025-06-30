@@ -287,7 +287,7 @@ async def index(request: Request, season_id: str = None):
         
     ui.button('Log Out', on_click=lambda: ui.navigate.to('/logout')).classes('absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded')
     state = SimpleNamespace(uploaded_url='')
-    HERO_OPTIONS = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa']
+    HERO_OPTIONS = ['Dooley', 'Mak', 'Pygmalien', 'Vanessa','Stelle','Jules']
 
     current_page = 1
     page_size = 8
@@ -348,7 +348,6 @@ async def index(request: Request, season_id: str = None):
     #games-container >div:last-child {
         border-radius:0 0 5px 5px !important;
     }
-    
     </style>
     """)
 
@@ -366,6 +365,8 @@ async def index(request: Request, season_id: str = None):
             'Mak': 'bg-[#2da337] text-white',
             'Pygmalien': 'bg-[#f56a1f] text-white',
             'Vanessa': 'bg-[#6312de] text-white',
+            'Stelle': 'bg-[orange] text-white',
+            'Jules': 'bg-[#BF3B8C] text-white',
         }
         hero_class = hero_colors.get(game.hero.lower().capitalize(), 'bg-gray-200 text-gray-900')
 
@@ -682,7 +683,17 @@ async def index(request: Request, season_id: str = None):
                 'Mak': '#2da337',
                 'Pygmalien': '#f56a1f',
                 'Vanessa': '#6312de',
+                'Stelle': 'orange',
+                'Jules': '#BF3B8C',
             }
+
+        #      hero_colors = {
+        #     'Dooley': 'bg-[#397d83] text-white',
+        #     'Mak': 'bg-[#2da337] text-white',
+        #     'Pygmalien': 'bg-[#f56a1f] text-white',
+        #     'Vanessa': 'bg-[#6312de] text-white',
+         
+        # }
             hero_bar_colors = [hero_colors.get(name, "#888888") for name in all_hero_names]
 
             hero_chart_options = {
@@ -798,7 +809,7 @@ async def index(request: Request, season_id: str = None):
             finished_label.bind_text_from(finished, "value", lambda v: f"Day Finished: {v}")
 
             # Hidden field to store patchid for database insertion
-            patch_id_hidden = ui.input('', value=patchversion).props('type=hidden')
+            patch_id_hidden = ui.input('', value=patchversion).props('type=hidden').style('display:none')
             # patch_id = ui.input('', value=patchid).props('type=hidden')
 
             def enforce_win_limit(e=None):
