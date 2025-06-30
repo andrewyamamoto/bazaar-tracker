@@ -629,7 +629,11 @@ async def index(request: Request, season_id: str = None):
                 "xAxis": {
                     "type": "category",
                     "data": categories_p,
-                    "axisLabel": {"color": "#ffffff"},
+                    "axisLabel": {
+                        "color": "#ffffff",
+                        "interval": 0,  # Show all labels
+                        "rotate": 0,    # No rotation, adjust if needed
+                    },
                 },
                 "yAxis": {
                     "type": "value",
