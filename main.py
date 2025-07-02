@@ -180,7 +180,7 @@ async def api_login(request: Request):
     if user:
         request.session['user_id'] = user.id
         latest_game = await models.Game.filter(player_id=user.id).order_by('-season').first()
-        latest_season = latest_game.season if latest_game else 3
+        latest_season = latest_game.season if latest_game else 4
         return {'success': True, 'redirect': f'/dashboard/{latest_season}'}
     return {'success': False, 'error': 'Invalid email or password.'}
 
