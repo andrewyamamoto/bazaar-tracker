@@ -372,10 +372,15 @@ async def index(request: Request, season_id: str = None):
 
         with games_container:
             with ui.element('div').style(grid_style) as row:
-                if(game.patch_id == ""):
-                    patch_version = ""
+                if game.patch_id:
+                    patch_id_value = getattr(game.patch_id, 'patch_id', None)
+                    patch_version = f" ({patch_id_value})" if patch_id_value else ""
                 else:
-                    patch_version = " (" + getattr(game.patch_id, 'patch_id', game.patch_id) + ")"
+                    patch_version = ""
+                # if(game.patch_id == ""):
+                #     patch_version = ""
+                # else:
+                #     patch_version = " (" + getattr(game.patch_id, 'patch_id', game.patch_id) + ")"
                     
                 with ui.element('div').style('display: grid; align-items: center;'):
                     html = f'''
@@ -853,7 +858,7 @@ async def index(request: Request, season_id: str = None):
                     media.props(remove='error error-message')
 
             media.on('change', validate_media_url)
-            upload_component = ui.upload(label='Upload Screenshot or Video', on_upload=handle_upload).classes('w-full')
+            upload_component = ui.upload(label='Upload Screenshot or Video', on_upload=handle_upload,auto_upload=True).classes('w-full')
             MAX_NOTES_LENGTH = 75
             notes = ui.textarea(label=f'Notes (max {MAX_NOTES_LENGTH} chars)').classes('w-full rounded-lg border border-gray-800 p-2 pt-0')
             char_count_label = ui.label('0/75').classes('text-xs text-gray-500 mb-2')
