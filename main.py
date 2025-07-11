@@ -19,6 +19,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from tortoise import Tortoise
 from tortoise.expressions import Q
 from types import SimpleNamespace
+import pytz
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
@@ -371,27 +372,11 @@ async def index(request: Request, season_id: str = None):
         hero_class = hero_colors.get(game.hero.lower().capitalize(), 'bg-gray-200 text-gray-900')
 
         with games_container:
+            
             with ui.element('div').style(grid_style) as row:
-                if game.patch_id:
-                    patch_id_value = getattr(game.patch_id, 'patch_id', None)
-                    patch_version = f" ({patch_id_value})" if patch_id_value else ""
-                else:
-                    patch_version = ""
-                # if(game.patch_id == ""):
-                #     patch_version = ""
-                # else:
-                #     patch_version = " (" + getattr(game.patch_id, 'patch_id', game.patch_id) + ")"
                     
-                with ui.element('div').style('display: grid; align-items: center;'):
-                    html = f'''
-                    <span>{game.hero}</span>
-                    <span class='text-xs'>{patch_version}</span>
-                    '''
-                    ui.html(html).classes(
-                        f'truncate rounded px-3 py-1 {hero_class} font-semibold shadow text-center'
-                    )
-
-                # Ranked/Non-Ranked
+                with ui.label(game.hero).classes(f'truncate text-center rounded px-3 py-1 {hero_class} font-semibold shadow text-center'):
+                    ui.tooltip(game.patch_id).classes('bg-green text-md text-bold')
                 ui.label("Ranked" if game.ranked else "Non-Ranked").classes('truncate text-center')
 
                 # Win/Day
@@ -425,7 +410,14 @@ async def index(request: Request, season_id: str = None):
                     ui.label('No Notes').classes('truncate text-gray-500 text-center')
 
                 # Played date
-                played_str = game.played.strftime('%Y-%m-%d %I:%M %p') if game.played else ''
+                # Use user's timezone if available, otherwise default to PST
+                user_timezone = os.getenv('USER_TIMEZONE', 'America/Los_Angeles')  # Default to PST
+                tz = pytz.timezone(user_timezone)
+                if game.played:
+                    played_dt = game.played.astimezone(tz)
+                    played_str = played_dt.strftime('%Y-%m-%d %I:%M %p')
+                else:
+                    played_str = ''
                 ui.label(played_str).classes('truncate text-center')
 
                 # Actions (delete)
@@ -465,7 +457,7 @@ async def index(request: Request, season_id: str = None):
         if games:
             with games_container:
                 with ui.element('div').style(grid_style_2).classes('font-bold'):
-                    for header in ['Hero', 'Mode', 'Win/Day', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
+                    for header in ['Hero','Mode', 'Win/Day', 'Media', 'Upload', 'Notes', 'Played', 'Actions']:
                         ui.label(header).classes('truncate text-center')
         for game in games:
             await add_row(game)
